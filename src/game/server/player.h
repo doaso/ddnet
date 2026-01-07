@@ -30,6 +30,21 @@ public:
 	CPlayer(CGameContext *pGameServer, uint32_t UniqueClientId, int ClientId, int Team);
 	~CPlayer();
 
+        int m_OrelReshkaOpponent = 0;
+        int m_OrelReshkaPoints = 0;
+        int m_OrelReshkaCode = 0;
+        bool m_IsTpSpec = false;
+        bool m_IsLoginOrRegister = true;
+        int m_Effect = 0;
+        float m_EffectAngle = 0.0f;
+        bool m_IsHaveAccount = false;
+        int m_AccountId = -1;
+        int m_AccountPoints = 0;
+        char m_aAccountPassword[64];
+        int m_AccountRole = 0;
+        int m_TryPassword = 3;
+        int m_LastEffectTime = 0;
+
 	void Reset();
 
 	void TryRespawn();
@@ -104,6 +119,7 @@ public:
 
 	int m_DieTick;
 	int m_PreviousDieTick;
+	std::optional<int> m_Score;
 	int m_JoinTick;
 	int m_LastActionTick;
 	int m_TeamChangeTick;
@@ -181,7 +197,6 @@ public:
 	int64_t m_LastDDRaceTeamChange;
 	int m_ShowOthers;
 	bool m_ShowAll;
-	bool m_EnableSpectatorCount;
 	vec2 m_ShowDistance;
 	bool m_SpecTeam;
 	bool m_NinjaJetpack;

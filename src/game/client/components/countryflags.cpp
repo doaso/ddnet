@@ -83,7 +83,11 @@ void CCountryFlags::LoadCountryflagsIndexfile()
 		}
 
 	// init LUT
-	std::fill(std::begin(m_aCodeIndexLUT), std::end(m_aCodeIndexLUT), DefaultIndex);
+	if(DefaultIndex != 0)
+		for(size_t &CodeIndexLUT : m_aCodeIndexLUT)
+			CodeIndexLUT = DefaultIndex;
+	else
+		mem_zero(m_aCodeIndexLUT, sizeof(m_aCodeIndexLUT));
 	for(size_t i = 0; i < m_vCountryFlags.size(); ++i)
 		m_aCodeIndexLUT[maximum(0, (m_vCountryFlags[i].m_CountryCode - CODE_LB) % CODE_RANGE)] = i;
 }

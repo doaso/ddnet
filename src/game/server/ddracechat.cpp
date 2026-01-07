@@ -16,263 +16,1108 @@
 #include <game/teamscore.h>
 #include <game/version.h>
 
-void CGameContext::ConCredits(IConsole::IResult *pResult, void *pUserData)
+void CGameContext::Teleport(CCharacter *pChr, vec2 Pos)
 {
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	static constexpr const char *CREDITS[] = {
-		"DDNet is run by the DDNet staff (DDNet.org/staff)",
-		"Great maps and many ideas from the great community",
-		"Help and code by eeeee, HMH, east, CookieMichal, Learath2,",
-		"Savander, laxa, Tobii, BeaR, Wohoo, nuborn, timakro, Shiki,",
-		"trml, Soreu, hi_leute_gll, Lady Saavik, Chairn, heinrich5991,",
-		"swick, oy, necropotame, Ryozuki, Redix, d3fault, marcelherd,",
-		"BannZay, ACTom, SiuFuWong, PathosEthosLogos, TsFreddie,",
-		"Jupeyy, noby, ChillerDragon, ZombieToad, weez15, z6zzz,",
-		"Piepow, QingGo, RafaelFF, sctt, jao, daverck, fokkonaut,",
-		"Bojidar, FallenKN, ardadem, archimede67, sirius1242, Aerll,",
-		"trafilaw, Zwelf, Patiga, Konsti, ElXreno, MikiGamer,",
-		"Fireball, Banana090, axblk, yangfl, Kaffeine, Zodiac,",
-		"c0d3d3v, GiuCcc, Ravie, Robyt3, simpygirl, Tater, Cellegen,",
-		"srdante, Nouaa, Voxel, luk51, Vy0x2, Avolicious, louis,",
-		"Marmare314, hus3h, ArijanJ, tarunsamanta2k20, Possseidon,",
-		"+KZ, Teero, furo, dobrykafe, Moiman, JSaurusRex,",
-		"Steinchen, ewancg, gerdoe-jr, melon, KebsCS, bencie,",
-		"DynamoFox, MilkeeyCat, iMilchshake, SchrodingerZhu,",
-		"catseyenebulous, Rei-Tw, Matodor, Emilcha, art0007i, SollyBunny,",
-		"0xfaulty & others",
-		"Based on DDRace by the DDRace developers,",
-		"which is a mod of Teeworlds by the Teeworlds developers.",
-	};
-	for(const char *pLine : CREDITS)
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", pLine);
+	pChr->SetPosition(Pos);
+	pChr->m_Pos = Pos;
+	pChr->m_PrevPos = Pos;
 }
 
-void CGameContext::ConInfo(IConsole::IResult *pResult, void *pUserData)
+
+void CGameContext::ConGiveGun(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"DDraceNetwork Mod. Version: " GAME_VERSION);
-	if(GIT_SHORTREV_HASH)
-	{
-		char aBuf[64];
-		str_format(aBuf, sizeof(aBuf), "Git revision hash: %s", GIT_SHORTREV_HASH);
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-	}
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"Official site: DDNet.org");
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"For more info: /cmdlist");
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-		"Or visit DDNet.org");
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выдали себе оружие");
+        ConAddWeapon(pResult, pUserData);
 }
 
-void CGameContext::ConList(IConsole::IResult *pResult, void *pUserData)
+
+void CGameContext::ConEffect(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	int ClientId = pResult->m_ClientId;
-	if(!CheckClientId(ClientId))
-		return;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
 
-	if(pResult->NumArguments() > 0)
-		pSelf->List(ClientId, pResult->GetString(0));
-	else
-		pSelf->List(ClientId, "");
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        pPlayer->m_Effect = pResult->GetInteger(0);
+        // pSelf->SendChatTarget(pPlayer->GetCid(), "Вы установи эффект");
 }
 
-void CGameContext::ConHelp(IConsole::IResult *pResult, void *pUserData)
-{
+
+void CGameContext::ConInfhook(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
 
-	if(pResult->NumArguments() == 0)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"/cmdlist will show a list of all chat commands");
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"/help + any command will show you the help for this command");
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"Example /help settings will display the help about /settings");
-	}
-	else
-	{
-		const char *pArg = pResult->GetString(0);
-		const IConsole::ICommandInfo *pCmdInfo =
-			pSelf->Console()->GetCommandInfo(pArg, CFGFLAG_SERVER | CFGFLAG_CHAT, false);
-		if(pCmdInfo)
-		{
-			if(pCmdInfo->Params())
-			{
-				char aBuf[256];
-				str_format(aBuf, sizeof(aBuf), "Usage: %s %s", pCmdInfo->Name(), pCmdInfo->Params());
-				pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-			}
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
 
-			if(pCmdInfo->Help())
-				pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", pCmdInfo->Help());
-		}
-		else
-		{
-			char aBuf[256];
-			str_format(aBuf, sizeof(aBuf), "Unknown command %s", pArg);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-		}
-	}
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetEndlessHook(true);
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили бесконечный хук");
 }
 
-void CGameContext::ConSettings(IConsole::IResult *pResult, void *pUserData)
-{
+
+void CGameContext::ConJetpackC(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
 
-	if(pResult->NumArguments() == 0)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"to check a server setting say /settings and setting's name, setting names are:");
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"teams, cheats, collision, hooking, endlesshooking,");
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"hitting, oldlaser, timeout, votes, pause and scores");
-	}
-	else
-	{
-		const char *pArg = pResult->GetString(0);
-		char aBuf[256];
-		float ColTemp;
-		float HookTemp;
-		pSelf->GlobalTuning()->Get("player_collision", &ColTemp);
-		pSelf->GlobalTuning()->Get("player_hooking", &HookTemp);
-		if(str_comp_nocase(pArg, "teams") == 0)
-		{
-			str_format(aBuf, sizeof(aBuf), "%s %s",
-				g_Config.m_SvTeam == SV_TEAM_ALLOWED ?
-					"Teams are available on this server" :
-				(g_Config.m_SvTeam == SV_TEAM_FORBIDDEN || g_Config.m_SvTeam == SV_TEAM_FORCED_SOLO) ?
-					"Teams are not available on this server" :
-					"You have to be in a team to play on this server", /*g_Config.m_SvTeamStrict ? "and if you die in a team all of you die" : */
-				"and all of your team will die if the team is locked");
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-		}
-		else if(str_comp_nocase(pArg, "cheats") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvTestingCommands ?
-					"Cheats are enabled on this server" :
-					"Cheats are disabled on this server");
-		}
-		else if(str_comp_nocase(pArg, "collision") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				ColTemp ?
-					"Players can collide on this server" :
-					"Players can't collide on this server");
-		}
-		else if(str_comp_nocase(pArg, "hooking") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				HookTemp ?
-					"Players can hook each other on this server" :
-					"Players can't hook each other on this server");
-		}
-		else if(str_comp_nocase(pArg, "endlesshooking") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvEndlessDrag ?
-					"Players hook time is unlimited" :
-					"Players hook time is limited");
-		}
-		else if(str_comp_nocase(pArg, "hitting") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvHit ?
-					"Players weapons affect others" :
-					"Players weapons has no affect on others");
-		}
-		else if(str_comp_nocase(pArg, "oldlaser") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvOldLaser ?
-					"Lasers can hit you if you shot them and they pull you towards the bounce origin (Like DDRace Beta)" :
-					"Lasers can't hit you if you shot them, and they pull others towards the shooter");
-		}
-		else if(str_comp_nocase(pArg, "timeout") == 0)
-		{
-			str_format(aBuf, sizeof(aBuf), "The Server Timeout is currently set to %d seconds", g_Config.m_ConnTimeout);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-		}
-		else if(str_comp_nocase(pArg, "votes") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvVoteKick ?
-					"Players can use Callvote menu tab to kick offenders" :
-					"Players can't use the Callvote menu tab to kick offenders");
-			if(g_Config.m_SvVoteKick)
-			{
-				str_format(aBuf, sizeof(aBuf),
-					"Players are banned for %d minute(s) if they get voted off", g_Config.m_SvVoteKickBantime);
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
 
-				pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-					g_Config.m_SvVoteKickBantime ?
-						aBuf :
-						"Players are just kicked and not banned if they get voted off");
-			}
-		}
-		else if(str_comp_nocase(pArg, "pause") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvPauseable ?
-					"/spec will pause you and your tee will vanish" :
-					"/spec will pause you but your tee will not vanish");
-		}
-		else if(str_comp_nocase(pArg, "scores") == 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				g_Config.m_SvHideScore ?
-					"Scores are private on this server" :
-					"Scores are public on this server");
-		}
-		else
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				"no matching settings found, type /settings to view them");
-		}
-	}
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetJetpack(true);
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили джетпак");
 }
 
-void CGameContext::ConRules(IConsole::IResult *pResult, void *pUserData)
-{
+void CGameContext::ConUnJetpackC(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-	bool Printed = false;
-	if(g_Config.m_SvDDRaceRules)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"Be nice.");
-		Printed = true;
-	}
-	char *apRuleLines[] = {
-		g_Config.m_SvRulesLine1,
-		g_Config.m_SvRulesLine2,
-		g_Config.m_SvRulesLine3,
-		g_Config.m_SvRulesLine4,
-		g_Config.m_SvRulesLine5,
-		g_Config.m_SvRulesLine6,
-		g_Config.m_SvRulesLine7,
-		g_Config.m_SvRulesLine8,
-		g_Config.m_SvRulesLine9,
-		g_Config.m_SvRulesLine10,
-	};
-	for(auto &pRuleLine : apRuleLines)
-	{
-		if(pRuleLine[0])
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD,
-				"chatresp", pRuleLine);
-			Printed = true;
-		}
-	}
-	if(!Printed)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"No Rules Defined, Kill em all!!");
-	}
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetJetpack(false);
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили джетпак");
 }
+
+void CGameContext::ConUnInfhook(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetEndlessHook(false);
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили бесконечный хук");
+}
+
+void CGameContext::ConInfjump(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetEndlessJump(true);
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили бесконечные прыжки");
+}
+
+void CGameContext::ConUnInfjump(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetEndlessJump(false);
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили бесконечные прыжки");
+}
+
+void CGameContext::ConLogin(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+        if (!pSelf) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_IsLoginOrRegister == false) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Вы уже авторизированы");
+            return;
+        }
+
+        if (pPlayer->m_IsHaveAccount == false) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Ваш аккаунт не зарегистрирован. Чтобы зарегистрировать его, используйте команду /register");
+            return; 
+        }
+
+        if (str_comp(pPlayer->m_aAccountPassword, pResult->GetString(0)) != 0) {
+            pPlayer->m_TryPassword--;
+            if (pPlayer->m_TryPassword == 0) {
+                pSelf->Server()->Kick(pPlayer->GetCid(), "Слишком много неверных попыток входа");
+                return;
+            }
+
+            char aBuf[255];
+            str_format(aBuf, sizeof(aBuf), "Неверный пароль. Осталось попыток: %d", pPlayer->m_TryPassword);
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pSelf->Score()->ChangeNetAdressAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pSelf->Server()->ClientAddrString(pPlayer->GetCid(), false));
+        pChr->SetLiveFrozen(false);
+        pPlayer->m_IsLoginOrRegister = false;
+
+        char aBuf[255];
+        str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", pPlayer->m_AccountPoints);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+}
+
+void CGameContext::ConRegister(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+        if (!pSelf) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_IsLoginOrRegister == false) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Вы уже авторизированы");
+            return;
+        }
+
+        if (pPlayer->m_IsHaveAccount == true) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Ваш аккаунт зарегистрирован. Для входа в него воспользуйтесь командой /login");
+            return; 
+        }
+
+        if (str_comp(pResult->GetString(0), pResult->GetString(1)) != 0) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Пароли не совпадают");
+            return;
+        }
+
+        pSelf->Score()->RegisterAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(1));
+        pSelf->Score()->ChangeNetAdressAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pSelf->Server()->ClientAddrString(pPlayer->GetCid(), false));
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы зарегистировались");
+
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetLiveFrozen(false);
+        pPlayer->m_IsLoginOrRegister = false;
+        pPlayer->m_IsHaveAccount = true;
+
+        char aBuf[255];
+        str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", pPlayer->m_AccountPoints);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+}
+
+
+void CGameContext::ConPasswd(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+        if (!pSelf) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pPlayer->m_aAccountPassword, pResult->GetString(0)) != 0) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Текущий пароль введен неверно");
+            return;
+        }
+
+        pSelf->Score()->ChangePasswordAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(1));
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы сменили пароль");
+}
+
+void CGameContext::ConShop(IConsole::IResult *pResult, void *pUserData)
+{
+    CGameContext *pSelf = (CGameContext *)pUserData;
+    if (!pSelf)
+        return;
+
+    CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+    if (!pPlayer)
+        return;
+
+    if (pResult->NumArguments() == 1)
+    {
+        int ItemID = pResult->GetInteger(0);
+        int Price = 0;
+        const char *ItemName = "";
+
+        switch (ItemID) {
+        case 1: Price = 100;  ItemName = "Нинзя"; break;
+        case 2: Price = 250;  ItemName = "Эффект Хаммер-дробовик"; break;
+        case 3: Price = 250;  ItemName = "Эффект Хаммер-лазер"; break;
+        case 4: Price = 500;  ItemName = "Эффект Хеппи-бердей"; break;
+        case 5: Price = 750;  ItemName = "Эффект Админ ауры"; break;
+        case 6: Price = 500;  ItemName = "Эффект Огненной ауры"; break;
+        case 7: Price = 1500;  ItemName = "Эффект Смерти"; break;
+        default:
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Неверный номер предмета");
+            return;
+        }
+
+        if (pPlayer->m_AccountPoints < Price) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно пойнтов");
+            return;
+        }
+
+        pPlayer->m_AccountPoints -= Price;
+        pSelf->Score()->ChangePointsAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pPlayer->m_AccountPoints);
+
+        switch (ItemID) {
+        case 1: pSelf->ModifyWeapons(pResult, pUserData, 5, false); break;
+        case 2: pPlayer->m_Effect = 5; break;
+        case 3: pPlayer->m_Effect = 6; break;
+        case 4: pPlayer->m_Effect = 3; break;
+        case 5: pPlayer->m_Effect = 4; break;
+        case 6: pPlayer->m_Effect = 2; break;
+        case 7: pPlayer->m_Effect = 1; break;
+        }
+
+
+        char aBuf[128];
+        str_format(aBuf, sizeof(aBuf), "Вы купили %s за %d пойнтов", ItemName, Price);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+    } else {
+        char aBuf[1024];
+        char aShopText[1024] = "";
+        str_append(aShopText, "Магазин:\n", sizeof(aShopText));
+
+        struct ItemInfo { int ID; const char *Name; int Price; };
+        ItemInfo Items[] = {
+            {1, "Нинзя", 100},
+            {2, "Эффект Хаммер-дробовик", 250},
+            {3, "Эффект Хаммер-лазер", 250},
+            {4, "Эффект Хеппи-бердей", 500},
+            {5, "Эффект Админ ауры", 750},
+            {6, "Эффект Огненной ауры", 500},
+            {7, "Эффект Смерти", 1500},
+        };
+
+        for (const auto &It : Items) {
+            char aLine[256];
+            str_format(aLine, sizeof(aLine), "/shop %d - %s %d пойнтов\n", It.ID, It.Name, It.Price);
+            str_append(aShopText, aLine, sizeof(aShopText));
+        }
+
+        str_format(aBuf, sizeof(aBuf), "%s", aShopText);
+        pSelf->SendMotd(pResult->m_ClientId, aBuf);
+    }
+}
+
+void CGameContext::ConRules(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+        if (!pSelf) {
+            return;
+        }
+
+        pSelf->SendMotd(pResult->m_ClientId, R"(Правила:
+Читы - Кик
+Оскорбления - Мут/Кик
+        )");
+}
+
+void CGameContext::ConCommands(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+        if (!pSelf) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pResult->GetInteger(0) == 0) {
+            pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 0-го уровня доступа:
+/login - Авторизация в аккаунт
+/register - Зарегистрировать аккаунт
+/passwd - Поменять пароль от аккаунта
+/rules - Вывести правила
+/commands - Вывести команды по уровеню доступа
+/points - Вывести баланс
+/pay - Передать пойнты
+/shop - Магазин
+/orel или /reshka - Предложить сыграть в орел и решка
+            )");
+        } else if (pResult->GetInteger(0) == 1) {
+             pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 1-го уровня доступа:
+/effect - Установить эффект
+/infjump - Включить бескоенчные прыжки
+/uninfjump - Выключить бесконечные прыжки
+/infhook - Включить бесконечный хук
+/uninfhook - Выключить бесконечный хук
+/jetpack - Включить джетпак
+/unjetpack - Выключить джетпак
+/givegun - Выдать себе оружие
+            )");       
+        } else if (pResult->GetInteger(0) == 2) {
+             pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 2-го уровня доступа:
+/goto - Телепортироваться к игроку
+/gethere - Телепортировать игрока к себе
+/tpspec - Включить телепорт в режиме наблюдателя 
+/untpspec - Выключить телепорт в режиме наблюдателя
+/freeze - Заморозить игрока
+/unfreeze - Разморозить игрока
+            )");       
+        } else if (pResult->GetInteger(0) == 3) {
+             pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 3-го уровня доступа:
+/stats - Посмотреть статистику игрока
+/broadcast - Выводит сообщение на весь сервер
+/mute - Заблокировать чат игроку
+/unmute - Разаблокировать чат игроку
+/kick - Кикнуть игрока
+            )");       
+        } else if (pResult->GetInteger(0) == 4) {
+             pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 4-го уровня доступа:
+/vanis - Включить ваниш
+/unvanis - Выключить ваниш
+/ban - Заблокировать игрока
+            )");
+        } else if (pResult->GetInteger(0) == 5) {
+             pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 5-го уровня доступа:
+/setpoints - Установить пойнты
+/setlevel - Установить постоянный уровень доступа
+/settemplevel - Установить временный уровень доступа
+            )");
+        }
+}
+
+void CGameContext::ConBroadcastC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 3) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        pSelf->SendBroadcast(pResult->GetString(0), -1);
+}
+
+void CGameContext::ConSetLevel(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 5) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        if (pResult->GetInteger(1) < 0) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        if (pPlayerTarget->m_IsHaveAccount == false) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не зарегистрирован");
+            return;
+        }
+
+        int AccountRole = pResult->GetInteger(1);
+        pPlayerTarget->m_AccountRole = AccountRole;
+        pSelf->Score()->ChangeRoleAccount(pResult->GetString(0), AccountRole);
+        str_format(aBuf, sizeof(aBuf), "Вы установили %s постоянный %i уровень доступа", pResult->GetString(0), AccountRole);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам постоянный %i уровень доступа", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+}
+
+
+void CGameContext::ConSetPoints(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 5) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        if (pResult->GetInteger(1) < 0) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        if (pPlayerTarget->m_IsHaveAccount == false) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не зарегистрирован");
+            return;
+        }
+
+        int AccountPoints = pResult->GetInteger(1);
+        pPlayerTarget->m_AccountPoints = AccountPoints;
+        pSelf->Score()->ChangePointsAccount(pResult->GetString(0), AccountPoints);
+        str_format(aBuf, sizeof(aBuf), "Вы установили %s %i пойнтов", pResult->GetString(0), AccountPoints);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам %i пойнтов", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountPoints);
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+}
+
+void CGameContext::ConSetTempLevel(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 5) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        if (pResult->GetInteger(1) < 0) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        int AccountRole = pResult->GetInteger(1);
+        pPlayerTarget->m_AccountRole = AccountRole;
+        str_format(aBuf, sizeof(aBuf), "Вы установили %s врмеменный %i уровень доступа", pResult->GetString(0), AccountRole);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам врмеменный %i уровень доступа", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+}
+
+void CGameContext::ConUnMuteC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 3) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        const NETADDR *pAddr = pSelf->Server()->ClientAddr(ClientId);
+        if(!pAddr)
+        {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Не удалось получить адрес игрока");
+            return;
+        }
+
+        pSelf->m_Mutes.UnmuteAddr(pAddr);
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s разблокировал чат %s Причина: %s",
+        pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), pResult->GetString(1));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+}
+
+void CGameContext::ConMuteC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0) {
+            return;            
+        }
+
+        if (pPlayer->m_AccountRole < 3) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s заблокировал чат %s на %i секунд Причина: %s",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), pResult->GetInteger(1), pResult->GetString(2));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+        pSelf->MuteWithMessage(pSelf->Server()->ClientAddr(ClientId), pResult->GetInteger(1), pResult->GetString(2), pResult->GetString(1));
+}
+
+void CGameContext::ConKickC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0) {
+            return;            
+        }
+
+        if (pPlayer->m_AccountRole < 3) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s кикнул %s Причина: %s",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), pResult->GetString(1));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+}
+
+
+void CGameContext::ConBanC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0) {
+            return;            
+        }
+
+        if (pPlayer->m_AccountRole < 4) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s заблокировал %s на %i секунд Причина: %s",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), pResult->GetInteger(1), pResult->GetString(2));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+        pSelf->Server()->Ban(ClientId, pResult->GetInteger(1), pResult->GetString(2), false);
+}
+
+void CGameContext::ConGetHere(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0) {
+            return;            
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        CCharacter *pChrTarget = pPlayerTarget->GetCharacter();
+        if(!pChrTarget)
+            return;
+
+        pSelf->CreatePlayerSpawn(pChr->m_Pos);
+        pSelf->CreatePlayerSpawn(pChrTarget->m_Pos);
+        pSelf->Teleport(pChrTarget, pChr->m_Pos);
+	pChrTarget->ResetJumps();
+	pChrTarget->UnFreeze();
+	pChrTarget->ResetVelocity();
+
+        str_format(aBuf, sizeof(aBuf), "Вы телепортировали %s", pResult->GetString(0));
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "Вы были телепортированы администратором %s", pSelf->Server()->ClientName(pPlayer->GetCid()));
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+        pSelf->CreateSound(pChrTarget->m_Pos, SOUND_PLAYER_DIE);
+
+	// pPlayerTarget->m_LastTeleTee.Save(pChrTarget);
+}
+
+void CGameContext::ConUnFreeze(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        CCharacter *pChrTarget = pPlayerTarget->GetCharacter();
+        if(!pChrTarget)
+            return;
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) != 0) {
+            str_format(aBuf, sizeof(aBuf), "Вы разморозили %s", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            str_format(aBuf, sizeof(aBuf), "Администратор %s разморозил вас", pSelf->Server()->ClientName(pPlayer->GetCid()));
+            pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+        }
+
+        pChrTarget->SetDeepFrozen(false);
+        pChrTarget->UnFreeze();
+}
+
+void CGameContext::ConFreeze(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        CCharacter *pChrTarget = pPlayerTarget->GetCharacter();
+        if(!pChrTarget)
+            return;
+
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) != 0) {
+            str_format(aBuf, sizeof(aBuf), "Вы заморозили %s", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            str_format(aBuf, sizeof(aBuf), "Администратор %s заморозил вас", pSelf->Server()->ClientName(pPlayer->GetCid()));
+            pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+        }
+
+        pChrTarget->SetDeepFrozen(true);
+}
+
+
+void CGameContext::ConTpSpec(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        pPlayer->m_IsTpSpec = true;
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили телепорт в режиме наблюдателя");
+}
+
+void CGameContext::ConUnTpSpec(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        pPlayer->m_IsTpSpec = false;
+        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили телепорт в режиме наблюдателя");
+}
+
+void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0) {
+            return;            
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        CCharacter *pChrTarget = pPlayerTarget->GetCharacter();
+        if(!pChrTarget)
+            return;
+
+        pSelf->CreatePlayerSpawn(pChr->m_Pos);
+        pSelf->CreatePlayerSpawn(pChrTarget->m_Pos);
+        pSelf->Teleport(pChr, pChrTarget->m_Pos);
+	pChrTarget->ResetJumps();
+	pChrTarget->UnFreeze();
+	pChrTarget->ResetVelocity();
+
+        str_format(aBuf, sizeof(aBuf), "Вы телепортировались к %s", pResult->GetString(0));
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "К вам телепортировался администратор %s", pSelf->Server()->ClientName(pPlayer->GetCid()));
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+        pSelf->CreateSound(pChr->m_Pos, SOUND_PLAYER_DIE);
+	// pPlayer->m_LastTeleTee.Save(pChrTarget);
+}
+
 
 static void ToggleSpecPause(IConsole::IResult *pResult, void *pUserData, int PauseType)
 {
@@ -367,6 +1212,20 @@ void CGameContext::ConToggleSpec(IConsole::IResult *pResult, void *pUserData)
 		CGameTeams &Teams = pSelf->m_pController->Teams();
 		if(Teams.IsPractice(Teams.m_Core.Team(pResult->m_ClientId)))
 			PauseType = CPlayer::PAUSE_SPEC;
+
+
+                if (pPlayer->m_IsTpSpec == true) {
+                    CCharacter *pChr = pPlayer->GetCharacter();
+                    if(!pChr) {
+                        return;
+                    }
+
+                    vec2 TargetPos = vec2(pPlayer->m_pLastTarget->m_TargetX, pPlayer->m_pLastTarget->m_TargetY);
+                    pChr->UnFreeze();
+                    pSelf->Teleport(pChr, TargetPos);
+                    pSelf->CreatePlayerSpawn(TargetPos);
+                    pSelf->CreateSound(TargetPos, SOUND_PLAYER_DIE);
+                }
 	}
 
 	ToggleSpecPause(pResult, pUserData, PauseType);
@@ -458,54 +1317,36 @@ void CGameContext::ConTimes(IConsole::IResult *pResult, void *pUserData)
 	if(!CheckClientId(pResult->m_ClientId))
 		return;
 
-	int Offset = 1;
-	const char *pRequestedName = nullptr;
-
-	// input validation
-	if(pResult->NumArguments() == 1)
+	if(pResult->NumArguments() == 0)
+	{
+		pSelf->Score()->ShowTimes(pResult->m_ClientId, 1);
+	}
+	else if(pResult->NumArguments() == 1)
 	{
 		if(pResult->GetInteger(0) != 0)
 		{
-			Offset = pResult->GetInteger(0);
+			pSelf->Score()->ShowTimes(pResult->m_ClientId, pResult->GetInteger(0));
 		}
 		else
 		{
-			pRequestedName = pResult->GetString(0);
+			const char *pRequestedName = (str_comp_nocase(pResult->GetString(0), "me") == 0) ?
+							     pSelf->Server()->ClientName(pResult->m_ClientId) :
+							     pResult->GetString(0);
+			pSelf->Score()->ShowTimes(pResult->m_ClientId, pRequestedName, pResult->GetInteger(1));
 		}
 	}
-	else if(pResult->NumArguments() == 2)
+	else if(pResult->NumArguments() == 2 && pResult->GetInteger(1) != 0)
 	{
-		pRequestedName = pResult->GetString(0);
-		Offset = pResult->GetInteger(1);
+		const char *pRequestedName = (str_comp_nocase(pResult->GetString(0), "me") == 0) ?
+						     pSelf->Server()->ClientName(pResult->m_ClientId) :
+						     pResult->GetString(0);
+		pSelf->Score()->ShowTimes(pResult->m_ClientId, pRequestedName, pResult->GetInteger(1));
 	}
-	else if(pResult->NumArguments() > 2)
+	else
 	{
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "/times needs 0, 1 or 2 parameter. 1. = name, 2. = start number");
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Example: /times, /times me, /times Hans, /times \"Papa Smurf\" 5");
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Bad: /times Papa Smurf 5 # Good: /times \"Papa Smurf\" 5 ");
-		return;
-	}
-
-	// execution
-	if(g_Config.m_SvHideScore)
-	{
-		if(pRequestedName && str_comp_nocase(pRequestedName, "me") != 0 && str_comp_nocase(pRequestedName, pSelf->Server()->ClientName(pResult->m_ClientId)) != 0)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Showing the times of others is not allowed on this server.");
-			return;
-		}
-		pRequestedName = pSelf->Server()->ClientName(pResult->m_ClientId);
-		pSelf->Score()->ShowTimes(pResult->m_ClientId, pRequestedName, Offset);
-	}
-	else if(!pRequestedName)
-	{
-		pSelf->Score()->ShowTimes(pResult->m_ClientId, Offset);
-	}
-	else
-	{
-		if(str_comp_nocase(pRequestedName, "me") == 0)
-			pRequestedName = pSelf->Server()->ClientName(pResult->m_ClientId);
-		pSelf->Score()->ShowTimes(pResult->m_ClientId, pRequestedName, Offset);
 	}
 }
 
@@ -521,20 +1362,6 @@ void CGameContext::ConDND(IConsole::IResult *pResult, void *pUserData)
 
 	pPlayer->m_DND = pResult->NumArguments() == 0 ? !pPlayer->m_DND : pResult->GetInteger(0);
 	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", pPlayer->m_DND ? "You will not receive any further global chat and server messages" : "You will receive global chat and server messages");
-}
-
-void CGameContext::ConWhispers(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	pPlayer->m_Whispers = pResult->NumArguments() == 0 ? !pPlayer->m_Whispers : pResult->GetInteger(0);
-	pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", pPlayer->m_Whispers ? "You will receive whispers" : "You will not receive any further whispers");
 }
 
 void CGameContext::ConMap(IConsole::IResult *pResult, void *pUserData)
@@ -564,22 +1391,6 @@ void CGameContext::ConMap(IConsole::IResult *pResult, void *pUserData)
 		return;
 
 	pSelf->Score()->MapVote(pResult->m_ClientId, pResult->GetString(0));
-}
-
-void CGameContext::ConMapInfo(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	if(pResult->NumArguments() > 0)
-		pSelf->Score()->MapInfo(pResult->m_ClientId, pResult->GetString(0));
-	else
-		pSelf->Score()->MapInfo(pResult->m_ClientId, pSelf->Server()->GetMapName());
 }
 
 void CGameContext::ConTimeout(IConsole::IResult *pResult, void *pUserData)
@@ -620,408 +1431,6 @@ void CGameContext::ConTimeout(IConsole::IResult *pResult, void *pUserData)
 
 	pSelf->Server()->SetTimeoutProtected(pResult->m_ClientId);
 	str_copy(pPlayer->m_aTimeoutCode, pResult->GetString(0), sizeof(pPlayer->m_aTimeoutCode));
-}
-
-void CGameContext::ConPractice(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	if(pSelf->ProcessSpamProtection(pResult->m_ClientId, false))
-		return;
-
-	if(!g_Config.m_SvPractice)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Practice mode is disabled");
-		return;
-	}
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-
-	int Team = Teams.m_Core.Team(pResult->m_ClientId);
-
-	if(!Teams.IsValidTeamNumber(Team) || (Team == TEAM_FLOCK && g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO))
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Join a team to enable practice mode, which means you can use /r, but can't earn a rank.");
-		return;
-	}
-
-	if(Teams.TeamFlock(Team))
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Practice mode can't be enabled in team 0 mode.");
-		return;
-	}
-
-	if(Teams.GetSaving(Team))
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Practice mode can't be enabled while team save or load is in progress");
-		return;
-	}
-
-	if(Teams.IsPractice(Team))
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Team is already in practice mode");
-		return;
-	}
-
-	bool VotedForPractice = pResult->NumArguments() == 0 || pResult->GetInteger(0);
-
-	if(VotedForPractice == pPlayer->m_VotedForPractice)
-		return;
-
-	pPlayer->m_VotedForPractice = VotedForPractice;
-
-	int NumCurrentVotes = 0;
-	int TeamSize = 0;
-
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		if(Teams.m_Core.Team(i) == Team)
-		{
-			CPlayer *pPlayer2 = pSelf->m_apPlayers[i];
-			if(pPlayer2 && pPlayer2->m_VotedForPractice)
-				NumCurrentVotes++;
-			TeamSize++;
-		}
-	}
-
-	int NumRequiredVotes = TeamSize / 2 + 1;
-
-	char aBuf[512];
-	str_format(aBuf, sizeof(aBuf), "'%s' voted to %s /practice mode for your team, which means you can use practice commands, but you can't earn a rank. Type /practice to vote (%d/%d required votes)", pSelf->Server()->ClientName(pResult->m_ClientId), VotedForPractice ? "enable" : "disable", NumCurrentVotes, NumRequiredVotes);
-	pSelf->SendChatTeam(Team, aBuf);
-
-	if(NumCurrentVotes >= NumRequiredVotes)
-	{
-		Teams.SetPractice(Team, true);
-		pSelf->SendChatTeam(Team, "Practice mode enabled for your team, happy practicing!");
-		pSelf->SendChatTeam(Team, "See /practicecmdlist for a list of all available practice commands. Most commonly used ones are /telecursor, /lasttp and /rescue");
-	}
-}
-
-void CGameContext::ConUnPractice(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	if(pSelf->ProcessSpamProtection(pResult->m_ClientId, false))
-		return;
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-
-	int Team = Teams.m_Core.Team(pResult->m_ClientId);
-
-	if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team == TEAM_FLOCK)
-	{
-		log_info("chatresp", "Practice mode can't be disabled for team 0");
-		return;
-	}
-
-	if(!Teams.IsPractice(Team))
-	{
-		log_info("chatresp", "Team isn't in practice mode");
-		return;
-	}
-
-	if(Teams.GetSaving(Team))
-	{
-		log_info("chatresp", "Practice mode can't be disabled while team save or load is in progress");
-		return;
-	}
-
-	if(Teams.Count(Team) > g_Config.m_SvMaxTeamSize && pSelf->m_pController->Teams().TeamLocked(Team))
-	{
-		log_info("chatresp", "Can't disable practice. This team exceeds the maximum allowed size of %d players for regular team", g_Config.m_SvMaxTeamSize);
-		return;
-	}
-
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		if(Teams.m_Core.Team(i) == Team)
-		{
-			CPlayer *pPlayer2 = pSelf->m_apPlayers[i];
-			if(pPlayer2)
-			{
-				if(pPlayer2->m_VotedForPractice)
-					pPlayer2->m_VotedForPractice = false;
-
-				if(!g_Config.m_SvPauseable && pPlayer2->IsPaused() == -1 * CPlayer::PAUSE_SPEC)
-					pPlayer2->Pause(CPlayer::PAUSE_PAUSED, true);
-			}
-		}
-	}
-
-	// send before kill, in case team isn't locked
-	char aBuf[256];
-	str_format(aBuf, sizeof(aBuf), "'%s' disabled practice mode for your team", pSelf->Server()->ClientName(pResult->m_ClientId));
-	pSelf->SendChatTeam(Team, aBuf);
-
-	Teams.KillCharacterOrTeam(pResult->m_ClientId, Team);
-	Teams.SetPractice(Team, false);
-}
-
-void CGameContext::ConPracticeCmdList(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-
-	char aPracticeCommands[256] = "Available practice commands: ";
-	for(const IConsole::ICommandInfo *pCmd = pSelf->Console()->FirstCommandInfo(pResult->m_ClientId, CMDFLAG_PRACTICE);
-		pCmd; pCmd = pSelf->Console()->NextCommandInfo(pCmd, pResult->m_ClientId, CMDFLAG_PRACTICE))
-	{
-		char aCommand[64];
-
-		str_format(aCommand, sizeof(aCommand), "/%s%s", pCmd->Name(), pSelf->Console()->NextCommandInfo(pCmd, pResult->m_ClientId, CMDFLAG_PRACTICE) ? ", " : "");
-
-		if(str_length(aCommand) + str_length(aPracticeCommands) > 255)
-		{
-			pSelf->SendChatTarget(pResult->m_ClientId, aPracticeCommands);
-			aPracticeCommands[0] = '\0';
-		}
-		str_append(aPracticeCommands, aCommand);
-	}
-	pSelf->SendChatTarget(pResult->m_ClientId, aPracticeCommands);
-}
-
-void CGameContext::ConSwap(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	const char *pName = pResult->GetString(0);
-
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	if(!g_Config.m_SvSwap)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Swap is disabled on this server.");
-		return;
-	}
-
-	if(g_Config.m_SvTeam == SV_TEAM_FORCED_SOLO)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Swap is not available on forced solo servers.");
-		return;
-	}
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-
-	int Team = Teams.m_Core.Team(pResult->m_ClientId);
-
-	if(!Teams.IsValidTeamNumber(Team))
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"You aren't in a valid team.");
-		return;
-	}
-
-	int TargetClientId = -1;
-	if(pResult->NumArguments() == 1)
-	{
-		for(int i = 0; i < MAX_CLIENTS; i++)
-		{
-			if(pSelf->m_apPlayers[i] && !str_comp(pName, pSelf->Server()->ClientName(i)))
-			{
-				TargetClientId = i;
-				break;
-			}
-		}
-	}
-	else
-	{
-		int TeamSize = 1;
-		for(int i = 0; i < MAX_CLIENTS; i++)
-		{
-			if(pSelf->m_apPlayers[i] && Teams.m_Core.Team(i) == Team && i != pResult->m_ClientId)
-			{
-				TargetClientId = i;
-				TeamSize++;
-			}
-		}
-		if(TeamSize != 2)
-			TargetClientId = -1;
-	}
-
-	if(TargetClientId < 0)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Player not found");
-		return;
-	}
-
-	if(TargetClientId == pResult->m_ClientId)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Can't swap with yourself");
-		return;
-	}
-
-	int TargetTeam = Teams.m_Core.Team(TargetClientId);
-	if(TargetTeam != Team)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Player is on a different team");
-		return;
-	}
-
-	CPlayer *pSwapPlayer = pSelf->m_apPlayers[TargetClientId];
-	if(Team == TEAM_FLOCK || Teams.TeamFlock(Team))
-	{
-		CCharacter *pChr = pPlayer->GetCharacter();
-		CCharacter *pSwapChr = pSwapPlayer->GetCharacter();
-		if(!pChr || !pSwapChr || pChr->m_DDRaceState != ERaceState::STARTED || pSwapChr->m_DDRaceState != ERaceState::STARTED)
-		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "You and other player need to have started the map");
-			return;
-		}
-	}
-	else if(!Teams.IsStarted(Team) && !Teams.TeamFlock(Team))
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Need to have started the map to swap with a player.");
-		return;
-	}
-	if(pSelf->m_World.m_Core.m_apCharacters[pResult->m_ClientId] == nullptr || pSelf->m_World.m_Core.m_apCharacters[TargetClientId] == nullptr)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "You and the other player must not be paused.");
-		return;
-	}
-
-	bool SwapPending = pSwapPlayer->m_SwapTargetsClientId != pResult->m_ClientId;
-	if(SwapPending)
-	{
-		if(pSelf->ProcessSpamProtection(pResult->m_ClientId))
-			return;
-
-		Teams.RequestTeamSwap(pPlayer, pSwapPlayer, Team);
-		return;
-	}
-
-	Teams.SwapTeamCharacters(pPlayer, pSwapPlayer, Team);
-}
-
-void CGameContext::ConCancelSwap(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	if(!g_Config.m_SvSwap)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Swap is disabled on this server.");
-		return;
-	}
-
-	if(g_Config.m_SvTeam == SV_TEAM_FORCED_SOLO)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Swap is not available on forced solo servers.");
-		return;
-	}
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-
-	int Team = Teams.m_Core.Team(pResult->m_ClientId);
-
-	if(!pSelf->m_pController->Teams().IsValidTeamNumber(Team))
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"You aren't in a valid team.");
-		return;
-	}
-
-	bool SwapPending = pPlayer->m_SwapTargetsClientId != -1 && !pSelf->Server()->ClientSlotEmpty(pPlayer->m_SwapTargetsClientId);
-
-	if(!SwapPending)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"You do not have a pending swap request.");
-		return;
-	}
-
-	Teams.CancelTeamSwap(pPlayer, Team);
-}
-
-void CGameContext::ConSave(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	if(!g_Config.m_SvSaveGames)
-	{
-		pSelf->SendChatTarget(pResult->m_ClientId, "Save-function is disabled on this server");
-		return;
-	}
-
-	const char *pCode = "";
-	if(pResult->NumArguments() > 0)
-		pCode = pResult->GetString(0);
-
-	pSelf->Score()->SaveTeam(pResult->m_ClientId, pCode, g_Config.m_SvSqlServerName);
-}
-
-void CGameContext::ConLoad(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	if(!g_Config.m_SvSaveGames)
-	{
-		pSelf->SendChatTarget(pResult->m_ClientId, "Save-function is disabled on this server");
-		return;
-	}
-
-	if(pResult->NumArguments() > 0)
-		pSelf->Score()->LoadTeam(pResult->GetString(0), pResult->m_ClientId);
-	else
-		pSelf->Score()->GetSaves(pResult->m_ClientId);
 }
 
 void CGameContext::ConTeamRank(IConsole::IResult *pResult, void *pUserData)
@@ -1086,7 +1495,7 @@ void CGameContext::ConLock(IConsole::IResult *pResult, void *pUserData)
 	if(pResult->NumArguments() > 0)
 		Lock = !pResult->GetInteger(0);
 
-	if(Team == TEAM_FLOCK || !pSelf->m_pController->Teams().IsValidTeamNumber(Team))
+	if(Team <= TEAM_FLOCK || Team >= TEAM_SUPER)
 	{
 		pSelf->Console()->Print(
 			IConsole::OUTPUT_LEVEL_STANDARD,
@@ -1130,7 +1539,7 @@ void CGameContext::ConUnlock(IConsole::IResult *pResult, void *pUserData)
 
 	int Team = pSelf->GetDDRaceTeam(pResult->m_ClientId);
 
-	if(Team == TEAM_FLOCK || !pSelf->m_pController->Teams().IsValidTeamNumber(Team))
+	if(Team <= TEAM_FLOCK || Team >= TEAM_SUPER)
 		return;
 
 	if(pSelf->ProcessSpamProtection(pResult->m_ClientId, false))
@@ -1159,7 +1568,7 @@ void CGameContext::AttemptJoinTeam(int ClientId, int Team)
 		Console()->Print(
 			IConsole::OUTPUT_LEVEL_STANDARD,
 			"chatresp",
-			"You are running a vote, please try again after the vote is done!");
+			"You are running a vote please try again after the vote is done!");
 		return;
 	}
 	else if(g_Config.m_SvTeam == SV_TEAM_FORBIDDEN || g_Config.m_SvTeam == SV_TEAM_FORCED_SOLO)
@@ -1173,66 +1582,73 @@ void CGameContext::AttemptJoinTeam(int ClientId, int Team)
 		Console()->Print(
 			IConsole::OUTPUT_LEVEL_STANDARD,
 			"chatresp",
-			"You must join a team and play with somebody or else you can't play");
+			"You must join a team and play with somebody or else you can\'t play");
 		pPlayer->GetCharacter()->m_LastStartWarning = Server()->Tick();
 	}
 
-	if(!m_pController->Teams().IsValidTeamNumber(Team))
-	{
-		auto EmptyTeam = m_pController->Teams().GetFirstEmptyTeam();
-		if(!EmptyTeam.has_value())
-		{
-			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-				"No empty team left.");
-			return;
-		}
-		Team = EmptyTeam.value();
-	}
-
-	char aError[512];
-	if(pPlayer->m_LastDDRaceTeamChange + (int64_t)Server()->TickSpeed() * g_Config.m_SvTeamChangeDelay > Server()->Tick())
+	if(pPlayer->GetCharacter() == nullptr)
 	{
 		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			"You can't change teams that fast!");
-	}
-	else if(Team != TEAM_FLOCK && m_pController->Teams().TeamLocked(Team) && !m_pController->Teams().IsInvited(Team, ClientId))
-	{
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
-			g_Config.m_SvInvite ?
-				"This team is locked using /lock. Only members of the team can unlock it using /lock." :
-				"This team is locked using /lock. Only members of the team can invite you or unlock it using /lock.");
-	}
-	else if(Team != TEAM_FLOCK && m_pController->Teams().Count(Team) >= g_Config.m_SvMaxTeamSize && !m_pController->Teams().TeamFlock(Team) && !m_pController->Teams().IsPractice(Team))
-	{
-		char aBuf[512];
-		str_format(aBuf, sizeof(aBuf), "This team already has the maximum allowed size of %d players", g_Config.m_SvMaxTeamSize);
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-	}
-	else if(!m_pController->Teams().SetCharacterTeam(pPlayer->GetCid(), Team, aError, sizeof(aError)))
-	{
-		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aError);
+			"You can't change teams while you are dead/a spectator.");
 	}
 	else
 	{
-		if(PracticeByDefault())
+		if(Team < 0 || Team >= TEAM_SUPER)
 		{
-			// joined an empty team
-			if(m_pController->Teams().Count(Team) == 1)
-				m_pController->Teams().SetPractice(Team, true);
+			auto EmptyTeam = m_pController->Teams().GetFirstEmptyTeam();
+			if(!EmptyTeam.has_value())
+			{
+				Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
+					"No empty team left.");
+				return;
+			}
+			Team = EmptyTeam.value();
 		}
 
-		char aBuf[512];
-		str_format(aBuf, sizeof(aBuf), "'%s' joined team %d",
-			Server()->ClientName(pPlayer->GetCid()),
-			Team);
-		SendChat(-1, TEAM_ALL, aBuf);
-		pPlayer->m_LastDDRaceTeamChange = Server()->Tick();
+		if(pPlayer->m_LastDDRaceTeamChange + (int64_t)Server()->TickSpeed() * g_Config.m_SvTeamChangeDelay > Server()->Tick())
+		{
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
+				"Не флуди");
+		}
+		else if(Team != TEAM_FLOCK && m_pController->Teams().TeamLocked(Team) && !m_pController->Teams().IsInvited(Team, ClientId))
+		{
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
+				g_Config.m_SvInvite ?
+					"This team is locked using /lock. Only members of the team can unlock it using /lock." :
+					"This team is locked using /lock. Only members of the team can invite you or unlock it using /lock.");
+		}
+		else if(Team != TEAM_FLOCK && m_pController->Teams().Count(Team) >= g_Config.m_SvMaxTeamSize && !m_pController->Teams().TeamFlock(Team) && !m_pController->Teams().IsPractice(Team))
+		{
+			char aBuf[512];
+			str_format(aBuf, sizeof(aBuf), "This team already has the maximum allowed size of %d players", g_Config.m_SvMaxTeamSize);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
+		}
+		else if(const char *pError = m_pController->Teams().SetCharacterTeam(pPlayer->GetCid(), Team))
+		{
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", pError);
+		}
+		else
+		{
+			if(PracticeByDefault())
+			{
+				// joined an empty team
+				if(m_pController->Teams().Count(Team) == 1)
+					m_pController->Teams().SetPractice(Team, true);
+			}
 
-		if(m_pController->Teams().IsPractice(Team))
-			SendChatTarget(pPlayer->GetCid(), "Practice mode enabled for your team, happy practicing!");
+			char aBuf[512];
+			str_format(aBuf, sizeof(aBuf), "%s вошел в команду %d",
+				Server()->ClientName(pPlayer->GetCid()),
+				Team);
+			SendChat(-1, TEAM_ALL, aBuf);
+			pPlayer->m_LastDDRaceTeamChange = Server()->Tick();
 
-		if(m_pController->Teams().TeamFlock(Team))
-			SendChatTarget(pPlayer->GetCid(), "Team 0 mode enabled for your team. This will make your team behave like team 0.");
+			if(m_pController->Teams().IsPractice(Team))
+				SendChatTarget(pPlayer->GetCid(), "Practice mode enabled for your team, happy practicing!");
+
+			if(m_pController->Teams().TeamFlock(Team))
+				SendChatTarget(pPlayer->GetCid(), "Team 0 mode enabled for your team. This will make your team behave like team 0.");
+		}
 	}
 }
 
@@ -1256,7 +1672,7 @@ void CGameContext::ConInvite(IConsole::IResult *pResult, void *pUserData)
 	}
 
 	int Team = pController->Teams().m_Core.Team(pResult->m_ClientId);
-	if(Team != TEAM_FLOCK && pController->Teams().IsValidTeamNumber(Team))
+	if(Team > TEAM_FLOCK && Team < TEAM_SUPER)
 	{
 		int Target = -1;
 		for(int i = 0; i < MAX_CLIENTS; i++)
@@ -1300,6 +1716,49 @@ void CGameContext::ConInvite(IConsole::IResult *pResult, void *pUserData)
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", "Can't invite players to this team");
 }
 
+void CGameContext::ConVanis(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+        if (pPlayer->m_AccountRole < 4) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        char aBuf[512];
+        str_format(aBuf, sizeof(aBuf), "%s отключился", pSelf->Server()->ClientName(pResult->m_ClientId));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf, -1, CGameContext::FLAG_SIX);
+        pSelf->m_apPlayers[pResult->m_ClientId]->SetTeam(1);
+}
+
+
+void CGameContext::ConUnVanis(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+        if (pPlayer->m_AccountRole < 4) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        char aBuf[512];
+        str_format(aBuf, sizeof(aBuf), "%s подключился", pSelf->Server()->ClientName(pResult->m_ClientId));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf, -1, CGameContext::FLAG_SIX);
+        pSelf->m_apPlayers[pResult->m_ClientId]->SetTeam(0);
+}
+
 void CGameContext::ConTeam0Mode(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
@@ -1327,7 +1786,7 @@ void CGameContext::ConTeam0Mode(IConsole::IResult *pResult, void *pUserData)
 	int Team = pController->Teams().m_Core.Team(pResult->m_ClientId);
 	bool Mode = pController->Teams().TeamFlock(Team);
 
-	if(Team == TEAM_FLOCK || !pController->Teams().IsValidTeamNumber(Team))
+	if(Team <= TEAM_FLOCK || Team >= TEAM_SUPER)
 	{
 		pSelf->Console()->Print(
 			IConsole::OUTPUT_LEVEL_STANDARD,
@@ -1417,7 +1876,7 @@ void CGameContext::ConTeam(IConsole::IResult *pResult, void *pUserData)
 					TeamSize++;
 			}
 
-			str_format(aBuf, sizeof(aBuf), "You are in team %d having %d %s", PlayerTeam, TeamSize, TeamSize > 1 ? "players" : "player");
+			str_format(aBuf, sizeof(aBuf), "Вы в команде %d", PlayerTeam);
 			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 		}
 	}
@@ -1451,50 +1910,6 @@ void CGameContext::ConJoin(IConsole::IResult *pResult, void *pUserData)
 		return;
 
 	pSelf->AttemptJoinTeam(pResult->m_ClientId, Team);
-}
-
-void CGameContext::ConConverse(IConsole::IResult *pResult, void *pUserData)
-{
-	// This will never be called
-}
-
-void CGameContext::ConWhisper(IConsole::IResult *pResult, void *pUserData)
-{
-	// This will never be called
-}
-
-void CGameContext::ConSetEyeEmote(IConsole::IResult *pResult,
-	void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-	if(pResult->NumArguments() == 0)
-	{
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			(pPlayer->m_EyeEmoteEnabled) ?
-				"You can now use the preset eye emotes." :
-				"You don't have any eye emotes, remember to bind some.");
-		return;
-	}
-	else if(str_comp_nocase(pResult->GetString(0), "on") == 0)
-		pPlayer->m_EyeEmoteEnabled = true;
-	else if(str_comp_nocase(pResult->GetString(0), "off") == 0)
-		pPlayer->m_EyeEmoteEnabled = false;
-	else if(str_comp_nocase(pResult->GetString(0), "toggle") == 0)
-		pPlayer->m_EyeEmoteEnabled = !pPlayer->m_EyeEmoteEnabled;
-	pSelf->Console()->Print(
-		IConsole::OUTPUT_LEVEL_STANDARD,
-		"chatresp",
-		(pPlayer->m_EyeEmoteEnabled) ?
-			"You can now use the preset eye emotes." :
-			"You don't have any eye emotes, remember to bind some.");
 }
 
 void CGameContext::ConEyeEmote(IConsole::IResult *pResult, void *pUserData)
@@ -1573,57 +1988,6 @@ void CGameContext::ConNinjaJetpack(IConsole::IResult *pResult, void *pUserData)
 		pPlayer->m_NinjaJetpack = pResult->GetInteger(0);
 	else
 		pPlayer->m_NinjaJetpack = !pPlayer->m_NinjaJetpack;
-}
-
-void CGameContext::ConShowOthers(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-	if(g_Config.m_SvShowOthers)
-	{
-		if(pResult->NumArguments())
-			pPlayer->m_ShowOthers = pResult->GetInteger(0);
-		else
-			pPlayer->m_ShowOthers = !pPlayer->m_ShowOthers;
-	}
-	else
-		pSelf->Console()->Print(
-			IConsole::OUTPUT_LEVEL_STANDARD,
-			"chatresp",
-			"Showing players from other teams is disabled");
-}
-
-void CGameContext::ConShowAll(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-
-	if(pResult->NumArguments())
-	{
-		if(pPlayer->m_ShowAll == (bool)pResult->GetInteger(0))
-			return;
-
-		pPlayer->m_ShowAll = pResult->GetInteger(0);
-	}
-	else
-	{
-		pPlayer->m_ShowAll = !pPlayer->m_ShowAll;
-	}
-
-	if(pPlayer->m_ShowAll)
-		pSelf->SendChatTarget(pResult->m_ClientId, "You will now see all tees on this server, no matter the distance");
-	else
-		pSelf->SendChatTarget(pResult->m_ClientId, "You will no longer see all tees on this server");
 }
 
 void CGameContext::ConSpecTeam(IConsole::IResult *pResult, void *pUserData)
@@ -1705,7 +2069,7 @@ void CGameContext::ConSayTimeAll(IConsole::IResult *pResult, void *pUserData)
 	int64_t Time = (int64_t)100 * (float)(pSelf->Server()->Tick() - pChr->m_StartTime) / ((float)pSelf->Server()->TickSpeed());
 	const char *pName = pSelf->Server()->ClientName(pResult->m_ClientId);
 	str_time(Time, TIME_HOURS, aBufTime, sizeof(aBufTime));
-	str_format(aBuf, sizeof(aBuf), "%s's current race time is %s", pName, aBufTime);
+	str_format(aBuf, sizeof(aBuf), "%s\'s current race time is %s", pName, aBufTime);
 	pSelf->SendChat(-1, TEAM_ALL, aBuf, pResult->m_ClientId);
 }
 
@@ -1876,245 +2240,6 @@ void CGameContext::ConRescueMode(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
-void CGameContext::ConBack(IConsole::IResult *pResult, void *pUserData)
-{
-	auto *pSelf = static_cast<CGameContext *>(pUserData);
-	if(auto *pChr = pSelf->GetPracticeCharacter(pResult))
-	{
-		auto *pPlayer = pChr->GetPlayer();
-		if(!pPlayer->m_LastDeath.has_value())
-		{
-			pSelf->SendChatTarget(pPlayer->GetCid(), "There is nowhere to go back to.");
-			return;
-		}
-		pChr->GetLastRescueTeeRef(pPlayer->m_RescueMode) = pPlayer->m_LastDeath.value();
-		pChr->Rescue();
-		pChr->UnFreeze();
-	}
-}
-
-void CGameContext::ConTeleTo(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CPlayer *pCallingPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pCallingPlayer)
-		return;
-	CCharacter *pCallingCharacter = pCallingPlayer->GetCharacter();
-	if(!pCallingCharacter)
-		return;
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-	int Team = pSelf->GetDDRaceTeam(pResult->m_ClientId);
-	if(!Teams.IsPractice(Team))
-	{
-		pSelf->SendChatTarget(pCallingPlayer->GetCid(), "You're not in a team with /practice turned on. Note that you can't earn a rank with practice enabled.");
-		return;
-	}
-
-	vec2 Pos = {};
-
-	if(pResult->NumArguments() == 0)
-	{
-		// Set calling tee's position to the origin of its spectating viewport
-		Pos = pCallingPlayer->m_ViewPos;
-	}
-	else
-	{
-		// Search for player with this name
-		int ClientId;
-		for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
-		{
-			if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
-				break;
-		}
-		if(ClientId == MAX_CLIENTS)
-		{
-			pSelf->SendChatTarget(pCallingPlayer->GetCid(), "No player with this name found.");
-			return;
-		}
-
-		CPlayer *pDestPlayer = pSelf->m_apPlayers[ClientId];
-		if(!pDestPlayer)
-			return;
-		CCharacter *pDestCharacter = pDestPlayer->GetCharacter();
-		if(!pDestCharacter)
-			return;
-
-		// Set calling tee's position to that of the destination tee
-		Pos = pDestCharacter->m_Pos;
-	}
-
-	// Teleport tee
-	pSelf->Teleport(pCallingCharacter, Pos);
-	pCallingCharacter->ResetJumps();
-	pCallingCharacter->UnFreeze();
-	pCallingCharacter->ResetVelocity();
-	pCallingPlayer->m_LastTeleTee.Save(pCallingCharacter);
-}
-
-void CGameContext::ConTeleXY(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CPlayer *pCallingPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pCallingPlayer)
-		return;
-	CCharacter *pCallingCharacter = pCallingPlayer->GetCharacter();
-	if(!pCallingCharacter)
-		return;
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-	int Team = pSelf->GetDDRaceTeam(pResult->m_ClientId);
-	if(!Teams.IsPractice(Team))
-	{
-		pSelf->SendChatTarget(pCallingPlayer->GetCid(), "You're not in a team with /practice turned on. Note that you can't earn a rank with practice enabled.");
-		return;
-	}
-
-	vec2 Pos = {};
-
-	if(pResult->NumArguments() != 2)
-	{
-		pSelf->SendChatTarget(pCallingPlayer->GetCid(), "Can't recognize specified arguments. Usage: /tpxy x y, e.g. /tpxy 9 3.");
-		return;
-	}
-	else
-	{
-		float BaseX = 0.f, BaseY = 0.f;
-
-		CMapItemLayerTilemap *pGameLayer = pSelf->m_Layers.GameLayer();
-		constexpr float OuterKillTileBoundaryDistance = 201 * 32.f;
-		float MapWidth = (pGameLayer->m_Width * 32) + (OuterKillTileBoundaryDistance * 2.f), MapHeight = (pGameLayer->m_Height * 32) + (OuterKillTileBoundaryDistance * 2.f);
-
-		const auto DetermineCoordinateRelativity = [](const char *pInString, const float AbsoluteDefaultValue, float &OutFloat) -> bool {
-			// mode 0 = abs, 1 = sub, 2 = add
-
-			// Relative?
-			const char *pStrDelta = str_startswith(pInString, "~");
-
-			float d;
-			if(!str_tofloat(pStrDelta ? pStrDelta : pInString, &d))
-				return false;
-
-			// Is the number valid?
-			if(std::isnan(d) || std::isinf(d))
-				return false;
-
-			// Convert our gleaned 'display' coordinate to an actual map coordinate
-			d *= 32.f;
-
-			OutFloat = (pStrDelta ? AbsoluteDefaultValue : 0) + d;
-			return true;
-		};
-
-		if(!DetermineCoordinateRelativity(pResult->GetString(0), pCallingPlayer->m_ViewPos.x, BaseX))
-		{
-			pSelf->SendChatTarget(pCallingPlayer->GetCid(), "Invalid X coordinate.");
-			return;
-		}
-		if(!DetermineCoordinateRelativity(pResult->GetString(1), pCallingPlayer->m_ViewPos.y, BaseY))
-		{
-			pSelf->SendChatTarget(pCallingPlayer->GetCid(), "Invalid Y coordinate.");
-			return;
-		}
-
-		Pos = {std::clamp(BaseX, (-OuterKillTileBoundaryDistance) + 1.f, (-OuterKillTileBoundaryDistance) + MapWidth - 1.f), std::clamp(BaseY, (-OuterKillTileBoundaryDistance) + 1.f, (-OuterKillTileBoundaryDistance) + MapHeight - 1.f)};
-	}
-
-	// Teleport tee
-	pSelf->Teleport(pCallingCharacter, Pos);
-	pCallingCharacter->ResetJumps();
-	pCallingCharacter->UnFreeze();
-	pCallingCharacter->ResetVelocity();
-	pCallingPlayer->m_LastTeleTee.Save(pCallingCharacter);
-}
-
-void CGameContext::ConTeleCursor(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-	CCharacter *pChr = pPlayer->GetCharacter();
-	if(!pChr)
-		return;
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-	int Team = pSelf->GetDDRaceTeam(pResult->m_ClientId);
-	if(!Teams.IsPractice(Team))
-	{
-		pSelf->SendChatTarget(pPlayer->GetCid(), "You're not in a team with /practice turned on. Note that you can't earn a rank with practice enabled.");
-		return;
-	}
-
-	// default to view pos when character is not available
-	vec2 Pos = pPlayer->m_ViewPos;
-	if(pResult->NumArguments() == 0 && !pPlayer->IsPaused() && pPlayer->GetCharacter() && pPlayer->GetCharacter()->IsAlive())
-	{
-		vec2 Target = vec2(pChr->Core()->m_Input.m_TargetX, pChr->Core()->m_Input.m_TargetY);
-		Pos = pPlayer->m_CameraInfo.ConvertTargetToWorld(pPlayer->GetCharacter()->GetPos(), Target);
-	}
-	else if(pResult->NumArguments() > 0)
-	{
-		int ClientId;
-		for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
-		{
-			if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
-				break;
-		}
-		if(ClientId == MAX_CLIENTS)
-		{
-			pSelf->SendChatTarget(pPlayer->GetCid(), "No player with this name found.");
-			return;
-		}
-		CPlayer *pPlayerTo = pSelf->m_apPlayers[ClientId];
-		if(!pPlayerTo)
-			return;
-		CCharacter *pChrTo = pPlayerTo->GetCharacter();
-		if(!pChrTo)
-			return;
-		Pos = pChrTo->m_Pos;
-	}
-	pSelf->Teleport(pChr, Pos);
-	pChr->ResetJumps();
-	pChr->UnFreeze();
-	pChr->ResetVelocity();
-	pPlayer->m_LastTeleTee.Save(pChr);
-}
-
-void CGameContext::ConLastTele(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer)
-		return;
-	CCharacter *pChr = pPlayer->GetCharacter();
-	if(!pChr)
-		return;
-
-	CGameTeams &Teams = pSelf->m_pController->Teams();
-	int Team = pSelf->GetDDRaceTeam(pResult->m_ClientId);
-	if(!Teams.IsPractice(Team))
-	{
-		pSelf->SendChatTarget(pPlayer->GetCid(), "You're not in a team with /practice turned on. Note that you can't earn a rank with practice enabled.");
-		return;
-	}
-	if(!pPlayer->m_LastTeleTee.GetPos().x)
-	{
-		pSelf->SendChatTarget(pPlayer->GetCid(), "You haven't previously teleported. Use /tp before using this command.");
-		return;
-	}
-	pPlayer->m_LastTeleTee.Load(pChr);
-	pPlayer->Pause(CPlayer::PAUSE_NONE, true);
-}
-
 CCharacter *CGameContext::GetPracticeCharacter(IConsole::IResult *pResult)
 {
 	if(!CheckClientId(pResult->m_ClientId))
@@ -2134,46 +2259,6 @@ CCharacter *CGameContext::GetPracticeCharacter(IConsole::IResult *pResult)
 		return nullptr;
 	}
 	return pChr;
-}
-
-void CGameContext::ConPracticeToTeleporter(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPracticeCharacter(pResult);
-	if(pChr)
-	{
-		if(pSelf->Collision()->TeleOuts(pResult->GetInteger(0) - 1).empty())
-		{
-			pSelf->SendChatTarget(pChr->GetPlayer()->GetCid(), "There is no teleporter with that index on the map.");
-			return;
-		}
-
-		ConToTeleporter(pResult, pUserData);
-		pChr->ResetJumps();
-		pChr->UnFreeze();
-		pChr->ResetVelocity();
-		pChr->GetPlayer()->m_LastTeleTee.Save(pChr);
-	}
-}
-
-void CGameContext::ConPracticeToCheckTeleporter(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPracticeCharacter(pResult);
-	if(pChr)
-	{
-		if(pSelf->Collision()->TeleCheckOuts(pResult->GetInteger(0) - 1).empty())
-		{
-			pSelf->SendChatTarget(pChr->GetPlayer()->GetCid(), "There is no checkpoint teleporter with that index on the map.");
-			return;
-		}
-
-		ConToCheckTeleporter(pResult, pUserData);
-		pChr->ResetJumps();
-		pChr->UnFreeze();
-		pChr->ResetVelocity();
-		pChr->GetPlayer()->m_LastTeleTee.Save(pChr);
-	}
 }
 
 void CGameContext::ConPracticeUnSolo(IConsole::IResult *pResult, void *pUserData)
@@ -2399,54 +2484,6 @@ void CGameContext::ConPracticeToggleInvincible(IConsole::IResult *pResult, void 
 		ConToggleInvincible(pResult, pUserData);
 }
 
-void CGameContext::ConPracticeToggleCollision(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	auto *pChr = pSelf->GetPracticeCharacter(pResult);
-	if(!pChr)
-		return;
-
-	pChr->SetCollisionDisabled(!pChr->Core()->m_CollisionDisabled);
-}
-
-void CGameContext::ConPracticeToggleHookCollision(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	auto *pChr = pSelf->GetPracticeCharacter(pResult);
-	if(!pChr)
-		return;
-
-	pChr->SetHookHitDisabled(!pChr->Core()->m_HookHitDisabled);
-}
-
-void CGameContext::ConPracticeToggleHitOthers(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	auto *pChr = pSelf->GetPracticeCharacter(pResult);
-	if(!pChr)
-		return;
-
-	if(pResult->NumArguments() == 0 || str_comp(pResult->GetString(0), "all") == 0)
-	{
-		bool IsEnabled = (pChr->HammerHitDisabled() && pChr->ShotgunHitDisabled() &&
-				  pChr->GrenadeHitDisabled() && pChr->LaserHitDisabled());
-		pChr->SetHammerHitDisabled(!IsEnabled);
-		pChr->SetShotgunHitDisabled(!IsEnabled);
-		pChr->SetGrenadeHitDisabled(!IsEnabled);
-		pChr->SetLaserHitDisabled(!IsEnabled);
-		return;
-	}
-
-	if(str_comp(pResult->GetString(0), "hammer") == 0)
-		pChr->SetHammerHitDisabled(!pChr->HammerHitDisabled());
-	else if(str_comp(pResult->GetString(0), "shotgun") == 0)
-		pChr->SetShotgunHitDisabled(!pChr->ShotgunHitDisabled());
-	else if(str_comp(pResult->GetString(0), "grenade") == 0)
-		pChr->SetGrenadeHitDisabled(!pChr->GrenadeHitDisabled());
-	else if(str_comp(pResult->GetString(0), "laser") == 0)
-		pChr->SetLaserHitDisabled(!pChr->LaserHitDisabled());
-}
-
 void CGameContext::ConPracticeAddWeapon(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
@@ -2481,25 +2518,425 @@ void CGameContext::ConProtectedKill(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
+void CGameContext::ConStats(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+        if (pPlayer->m_AccountRole < 3) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        str_format(aBuf, sizeof(aBuf), "Статистика игрока %s:\nID: %i\nIP-Адресс: %s\nУровень доступа: %i\nБаланс: %i пойнтов",
+                pResult->GetString(0), pPlayerTarget->m_AccountId, pSelf->Server()->ClientAddrString(ClientId, false), pPlayerTarget->m_AccountRole, pPlayerTarget->m_AccountPoints);
+        pSelf->SendMotd(pResult->m_ClientId, aBuf);
+}
+
 void CGameContext::ConPoints(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
 	if(!CheckClientId(pResult->m_ClientId))
 		return;
 
-	if(pResult->NumArguments() > 0)
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+
+        char aBuf[255];
+        str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", pPlayer->m_AccountPoints);
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+}
+
+void CGameContext::ConOrel(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) return;
+
+	if(pPlayer->m_OrelReshkaCode != 0)
 	{
-		if(!g_Config.m_SvHideScore)
-			pSelf->Score()->ShowPoints(pResult->m_ClientId, pResult->GetString(0));
-		else
-			pSelf->Console()->Print(
-				IConsole::OUTPUT_LEVEL_STANDARD,
-				"chatresp",
-				"Showing the global points of other players is not allowed on this server.");
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У вас уже есть активное предложение. Дождитесь ответа.");
+		return;
+	}
+
+	if(str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0)
+		return;
+
+	int bet = pResult->GetInteger(1);
+	if(bet <= 0)
+		return;
+
+	if(pPlayer->m_AccountPoints < bet)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно пойнтов");
+		return;
+	}
+
+	int ClientId = -1;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(pSelf->m_apPlayers[i] && str_comp(pResult->GetString(0), pSelf->Server()->ClientName(i)) == 0)
+		{
+			ClientId = i;
+			break;
+		}
+	}
+
+	if(ClientId == -1)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не найден");
+		return;
+	}
+
+	CPlayer *pTarget = pSelf->m_apPlayers[ClientId];
+	if(!pTarget || !pTarget->m_IsHaveAccount)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не зарегистрирован");
+		return;
+	}
+
+	if(pTarget->m_AccountPoints < bet)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У игрока недостаточно пойнтов");
+		return;
+	}
+
+	if(pTarget->m_OrelReshkaCode != 0)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Этот игрок уже участвует в другой игре орёл/решка");
+		return;
+	}
+
+	pPlayer->m_OrelReshkaPoints = bet;
+	pPlayer->m_OrelReshkaCode = 0;
+	pPlayer->m_OrelReshkaOpponent = ClientId;
+
+	pTarget->m_OrelReshkaPoints = bet;
+	pTarget->m_OrelReshkaCode = 2;
+	pTarget->m_OrelReshkaOpponent = pPlayer->GetCid();
+
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Вы предложили %s сыграть на %d пойнтов (ваша сторона: Орёл)", pResult->GetString(0), bet);
+	pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+
+	str_format(aBuf, sizeof(aBuf), "%s предложил вам орёл/решку на %d пойнтов (ваша сторона: Решка)", pSelf->Server()->ClientName(pPlayer->GetCid()), bet);
+	pSelf->SendChatTarget(ClientId, aBuf);
+	pSelf->SendChatTarget(ClientId, "Принять: /yes Отклонить: /no");
+}
+
+void CGameContext::ConReshka(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) return;
+
+	if(pPlayer->m_OrelReshkaCode != 0)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У вас уже есть активное предложение. Дождитесь ответа.");
+		return;
+	}
+
+	if(str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0)
+		return;
+
+	int bet = pResult->GetInteger(1);
+	if(bet <= 0)
+		return;
+
+	if(pPlayer->m_AccountPoints < bet)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно пойнтов");
+		return;
+	}
+
+	int ClientId = -1;
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(pSelf->m_apPlayers[i] && str_comp(pResult->GetString(0), pSelf->Server()->ClientName(i)) == 0)
+		{
+			ClientId = i;
+			break;
+		}
+	}
+
+	if(ClientId == -1)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не найден");
+		return;
+	}
+
+	CPlayer *pTarget = pSelf->m_apPlayers[ClientId];
+	if(!pTarget || !pTarget->m_IsHaveAccount)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не зарегистрирован");
+		return;
+	}
+
+	if(pTarget->m_AccountPoints < bet)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У игрока недостаточно пойнтов");
+		return;
+	}
+
+	if(pTarget->m_OrelReshkaCode != 0)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Этот игрок уже участвует в другой игре орёл/решка");
+		return;
+	}
+
+	pPlayer->m_OrelReshkaPoints = bet;
+	pPlayer->m_OrelReshkaCode = 0;
+	pPlayer->m_OrelReshkaOpponent = ClientId;
+
+	pTarget->m_OrelReshkaPoints = bet;
+	pTarget->m_OrelReshkaCode = 1;
+	pTarget->m_OrelReshkaOpponent = pPlayer->GetCid();
+
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "Вы предложили %s сыграть на %d пойнтов (ваша сторона: Решка)", pResult->GetString(0), bet);
+	pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+
+	str_format(aBuf, sizeof(aBuf), "%s предложил вам орёл/решку на %d пойнтов (ваша сторона: Орёл)", pSelf->Server()->ClientName(pPlayer->GetCid()), bet);
+	pSelf->SendChatTarget(ClientId, aBuf);
+	pSelf->SendChatTarget(ClientId, "Принять: /yes Отклонить: /no");
+}
+
+void CGameContext::ConYes(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+		return;
+	}
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+		return;
+	}
+
+	if (pPlayer->m_OrelReshkaCode == 0 || pPlayer->m_OrelReshkaOpponent == -1)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Вам никто не предлагал сыграть в орёл и решку");
+		return;
+	}
+
+	int ClientId = pPlayer->m_OrelReshkaOpponent;
+	
+	if (pPlayer->GetCid() == ClientId)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Вы не можете принять своё собственное предложение");
+		pPlayer->m_OrelReshkaCode = 0;
+		pPlayer->m_OrelReshkaPoints = 0;
+		pPlayer->m_OrelReshkaOpponent = -1;
+		return;
+	}
+
+	CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+
+	if(!pPlayerTarget || pPlayerTarget->m_OrelReshkaOpponent != pPlayer->GetCid())
+	{
+		pPlayer->m_OrelReshkaCode = 0;
+		pPlayer->m_OrelReshkaOpponent = -1;
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Предложение больше недействительно");
+		return;
+	}
+
+	if (pPlayer->m_AccountPoints < pPlayer->m_OrelReshkaPoints)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно пойнтов");
+		pPlayer->m_OrelReshkaCode = 0;
+		pPlayer->m_OrelReshkaPoints = 0;
+		pPlayer->m_OrelReshkaOpponent = -1;
+		pPlayerTarget->m_OrelReshkaCode = 0;
+		pPlayerTarget->m_OrelReshkaPoints = 0;
+		pPlayerTarget->m_OrelReshkaOpponent = -1;
+		return;
+	}
+
+	if (pPlayerTarget->m_AccountPoints < pPlayerTarget->m_OrelReshkaPoints)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "У вашего соперника недостаточно пойнтов");
+		pPlayer->m_OrelReshkaCode = 0;
+		pPlayer->m_OrelReshkaPoints = 0;
+		pPlayer->m_OrelReshkaOpponent = -1;
+		pPlayerTarget->m_OrelReshkaCode = 0;
+		pPlayerTarget->m_OrelReshkaPoints = 0;
+		pPlayerTarget->m_OrelReshkaOpponent = -1;
+		return;
+	}
+
+	char aBuf[255];
+	str_format(aBuf, sizeof(aBuf), "%s принял ваше предложение!", pSelf->Server()->ClientName(pPlayer->GetCid()));
+	pSelf->SendChatTarget(ClientId, aBuf);
+
+	int winnerCode = (rand() % 2) + 1;
+
+	if (winnerCode == pPlayer->m_OrelReshkaCode)
+	{
+		str_format(aBuf, sizeof(aBuf), "WIN +%i", pPlayer->m_OrelReshkaPoints);
+		pSelf->SendBroadcast(aBuf, pPlayer->GetCid());
+		str_format(aBuf, sizeof(aBuf), "LOSE -%i", pPlayer->m_OrelReshkaPoints);
+		pSelf->SendBroadcast(aBuf, ClientId);
+
+		pPlayer->m_AccountPoints += pPlayer->m_OrelReshkaPoints;
+		pPlayerTarget->m_AccountPoints -= pPlayer->m_OrelReshkaPoints;
 	}
 	else
-		pSelf->Score()->ShowPoints(pResult->m_ClientId,
-			pSelf->Server()->ClientName(pResult->m_ClientId));
+	{
+		str_format(aBuf, sizeof(aBuf), "LOSE -%i", pPlayer->m_OrelReshkaPoints);
+		pSelf->SendBroadcast(aBuf, pPlayer->GetCid());
+		str_format(aBuf, sizeof(aBuf), "WIN +%i", pPlayer->m_OrelReshkaPoints);
+		pSelf->SendBroadcast(aBuf, ClientId);
+
+		pPlayer->m_AccountPoints -= pPlayer->m_OrelReshkaPoints;
+		pPlayerTarget->m_AccountPoints += pPlayer->m_OrelReshkaPoints;
+	}
+
+	pSelf->Score()->ChangePointsAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pPlayer->m_AccountPoints);
+	pSelf->Score()->ChangePointsAccount(pSelf->Server()->ClientName(ClientId), pPlayerTarget->m_AccountPoints);
+
+	str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", pPlayer->m_AccountPoints);
+	pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+	str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", pPlayerTarget->m_AccountPoints);
+	pSelf->SendChatTarget(ClientId, aBuf);
+
+	pPlayer->m_OrelReshkaCode = 0;
+	pPlayer->m_OrelReshkaPoints = 0;
+	pPlayer->m_OrelReshkaOpponent = -1;
+	pPlayerTarget->m_OrelReshkaCode = 0;
+	pPlayerTarget->m_OrelReshkaPoints = 0;
+	pPlayerTarget->m_OrelReshkaOpponent = -1;
+}
+
+void CGameContext::ConNo(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+		return;
+	}
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+		return;
+	}
+
+	if (pPlayer->m_OrelReshkaCode == 0 || pPlayer->m_OrelReshkaOpponent == -1)
+	{
+		pSelf->SendChatTarget(pPlayer->GetCid(), "Вам никто не предлагал сыграть в орёл и решку");
+		return;
+	}
+
+	int ClientId = pPlayer->m_OrelReshkaOpponent;
+	CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+
+	if(pPlayerTarget && pPlayerTarget->m_OrelReshkaOpponent == pPlayer->GetCid())
+	{
+		char aBuf[255];
+		str_format(aBuf, sizeof(aBuf), "%s отклонил ваше предложение", pSelf->Server()->ClientName(pPlayer->GetCid()));
+		pSelf->SendChatTarget(ClientId, aBuf);
+	}
+
+	pPlayer->m_OrelReshkaCode = 0;
+	pPlayer->m_OrelReshkaPoints = 0;
+	pPlayer->m_OrelReshkaOpponent = -1;
+	if(pPlayerTarget)
+	{
+		pPlayerTarget->m_OrelReshkaCode = 0;
+		pPlayerTarget->m_OrelReshkaPoints = 0;
+		pPlayerTarget->m_OrelReshkaOpponent = -1;
+	}
+}
+
+void CGameContext::ConPayPoints(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) == 0) {
+            return;            
+        }
+
+        if (pPlayer->m_AccountPoints < pResult->GetInteger(1)) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно пойнтов");
+            return;
+        }
+
+        if (pResult->GetInteger(1) <= 0) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        if (pPlayerTarget->m_IsHaveAccount == false) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "Игрок не зарегистрирован");
+            return;
+        }
+
+        if (pPlayer->m_AccountPoints < pResult->GetInteger(1)) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно пойнтов");
+            return;
+        }
+
+        pPlayer->m_AccountPoints = pPlayer->m_AccountPoints - pResult->GetInteger(1);
+        pSelf->Score()->ChangePointsAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pPlayer->m_AccountPoints);
+        pPlayerTarget->m_AccountPoints = pPlayerTarget->m_AccountPoints + pResult->GetInteger(1);
+        pSelf->Score()->ChangePointsAccount(pResult->GetString(0), pPlayerTarget->m_AccountPoints);
+
+        str_format(aBuf, sizeof(aBuf), "Вы передали %s %i пойнтов", pResult->GetString(0), pResult->GetInteger(1));
+        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "%s передал вам %i пойнтов", pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetInteger(1));
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
 }
 
 void CGameContext::ConTopPoints(IConsole::IResult *pResult, void *pUserData)

@@ -798,7 +798,8 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_Render(const CCommandBuffer::SComm
 		glDrawElements(GL_TRIANGLES, pCommand->m_PrimCount * 6, GL_UNSIGNED_INT, 0);
 		break;
 	default:
-		dbg_assert_failed("Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_assert(false, "Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_break();
 	};
 
 	m_LastStreamBuffer = (m_LastStreamBuffer + 1 >= MAX_STREAM_BUFFER_COUNT ? 0 : m_LastStreamBuffer + 1);
@@ -827,7 +828,8 @@ void CCommandProcessorFragment_OpenGL3_3::Cmd_RenderTex3D(const CCommandBuffer::
 		glDrawElements(GL_TRIANGLES, pCommand->m_PrimCount * 6, GL_UNSIGNED_INT, 0);
 		break;
 	default:
-		dbg_assert_failed("Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_assert(false, "Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_break();
 	};
 }
 
@@ -883,7 +885,8 @@ void CCommandProcessorFragment_OpenGL3_3::AppendIndices(unsigned int NewIndicesC
 	glDeleteBuffers(1, &m_QuadDrawIndexBufferId);
 	m_QuadDrawIndexBufferId = NewIndexBufferId;
 
-	std::fill(std::begin(m_aLastIndexBufferBound), std::end(m_aLastIndexBufferBound), 0);
+	for(unsigned int &i : m_aLastIndexBufferBound)
+		i = 0;
 	for(auto &BufferContainer : m_vBufferContainers)
 	{
 		BufferContainer.m_LastIndexBufferBound = 0;

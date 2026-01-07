@@ -206,7 +206,6 @@ pub enum ParseRegisterAddrError {
     Protocol(UnknownProtocol),
     HostNotConnectingAddressInvalid,
     PortNotPresent,
-    Port0,
 }
 
 impl fmt::Display for ParseRegisterAddrError {
@@ -220,7 +219,6 @@ impl fmt::Display for ParseRegisterAddrError {
                 "register address must have domain connecting-address.invalid"
             ),
             PortNotPresent => write!(f, "register address must specify port"),
-            Port0 => write!(f, "register port can't be 0"),
         }
     }
 }
@@ -235,9 +233,6 @@ impl FromStr for RegisterAddr {
             return Err(Error::HostNotConnectingAddressInvalid);
         }
         let port = url.port().ok_or(Error::PortNotPresent)?;
-        if port == 0 {
-            return Err(Error::Port0);
-        }
         Ok(RegisterAddr { port, protocol })
     }
 }

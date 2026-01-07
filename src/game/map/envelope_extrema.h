@@ -21,10 +21,10 @@ public:
 		ivec2 m_Maxima;
 	};
 
-	const CEnvelopeExtremaItem &GetExtrema(int EnvelopeIndex) const;
+	const CEnvelopeExtremaItem &GetExtrema(int Env) const;
 
 private:
-	void CalculateEnvelope(const CMapItemEnvelope *pEnvelopeItem, int EnvelopeIndex);
+	void CalculateEnvelope(const CMapItemEnvelope *pEnvelopeItem, int EnvId);
 	void CalculateExtrema();
 
 	CEnvelopeExtremaItem m_EnvelopeExtremaItemNone;

@@ -1,7 +1,6 @@
 #include "color.h"
 #include "logger.h"
 #include "system.h"
-#include "windows.h"
 
 #include <atomic>
 #include <cstdio>
@@ -28,7 +27,7 @@ void log_set_global_logger(ILogger *logger)
 	ILogger *null = nullptr;
 	if(!global_logger.compare_exchange_strong(null, logger, std::memory_order_acq_rel))
 	{
-		dbg_assert_failed("global logger has already been set and can only be set once");
+		dbg_assert(false, "global logger has already been set and can only be set once");
 	}
 	atexit(log_global_logger_finish);
 }
@@ -446,7 +445,8 @@ std::unique_ptr<ILogger> log_logger_stdout()
 	}
 	else
 	{
-		dbg_assert_failed("GetFileType failure");
+		dbg_assert(false, "GetFileType failure");
+		dbg_break();
 	}
 #endif
 }
@@ -501,7 +501,7 @@ void CFutureLogger::Set(std::shared_ptr<ILogger> pLogger)
 	std::shared_ptr<ILogger> pNullLogger;
 	if(!std::atomic_compare_exchange_strong_explicit(&m_pLogger, &pNullLogger, pLogger, std::memory_order_acq_rel, std::memory_order_acq_rel))
 	{
-		dbg_assert_failed("future logger has already been set and can only be set once");
+		dbg_assert(false, "future logger has already been set and can only be set once");
 	}
 	m_pLogger = std::move(pLogger);
 

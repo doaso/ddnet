@@ -2,9 +2,9 @@
 
 #include <engine/sound.h>
 
-CEditorSound::CEditorSound(CEditorMap *pMap) :
-	CMapObject(pMap)
+CEditorSound::CEditorSound(CEditor *pEditor)
 {
+	OnInit(pEditor);
 }
 
 CEditorSound::~CEditorSound()

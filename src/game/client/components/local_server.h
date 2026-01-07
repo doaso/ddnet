@@ -10,7 +10,7 @@
 class CLocalServer : public CComponentInterfaces
 {
 public:
-	bool RunServer(const std::vector<const char *> &vpArguments);
+	void RunServer(const std::vector<const char *> &vpArguments);
 	void KillServer();
 	bool IsServerRunning();
 	void RconAuthIfPossible();

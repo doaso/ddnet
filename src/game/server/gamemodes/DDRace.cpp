@@ -4,8 +4,6 @@
 
 #include <engine/server.h>
 #include <engine/shared/config.h>
-#include <engine/shared/protocol.h>
-#include <engine/shared/protocol7.h>
 
 #include <game/mapitems.h>
 #include <game/server/entities/character.h>
@@ -71,10 +69,10 @@ void CGameControllerDDRace::HandleCharacterTiles(CCharacter *pChr, int MapIndex)
 			pChr->Die(ClientId, WEAPON_WORLD);
 			return;
 		}
-		if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team != TEAM_FLOCK && Teams().IsValidTeamNumber(Team) && Teams().Count(Team) < g_Config.m_SvMinTeamSize && !Teams().TeamFlock(Team))
+		if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team > TEAM_FLOCK && Team < TEAM_SUPER && Teams().Count(Team) < g_Config.m_SvMinTeamSize && !Teams().TeamFlock(Team))
 		{
 			char aBuf[128];
-			str_format(aBuf, sizeof(aBuf), "Your team has fewer than %d players, so your team rank won't count", g_Config.m_SvMinTeamSize);
+			str_format(aBuf, sizeof(aBuf), "В вашей команде меньше %d игроков, поэтому рейтинг вашей команды не будет учитываться.", g_Config.m_SvMinTeamSize);
 			GameServer()->SendStartWarning(ClientId, aBuf);
 		}
 		if(g_Config.m_SvResetPickups)
@@ -105,12 +103,12 @@ void CGameControllerDDRace::HandleCharacterTiles(CCharacter *pChr, int MapIndex)
 	// solo part
 	if(((TileIndex == TILE_SOLO_ENABLE) || (TileFIndex == TILE_SOLO_ENABLE)) && !Teams().m_Core.GetSolo(ClientId))
 	{
-		GameServer()->SendChatTarget(ClientId, "You are now in a solo part");
+		// GameServer()->SendChatTarget(ClientId, "You are now in a solo part");
 		pChr->SetSolo(true);
 	}
 	else if(((TileIndex == TILE_SOLO_DISABLE) || (TileFIndex == TILE_SOLO_DISABLE)) && Teams().m_Core.GetSolo(ClientId))
 	{
-		GameServer()->SendChatTarget(ClientId, "You are now out of the solo part");
+		// GameServer()->SendChatTarget(ClientId, "You are now out of the solo part");
 		pChr->SetSolo(false);
 	}
 }
@@ -118,51 +116,6 @@ void CGameControllerDDRace::HandleCharacterTiles(CCharacter *pChr, int MapIndex)
 void CGameControllerDDRace::SetArmorProgress(CCharacter *pCharacter, int Progress)
 {
 	pCharacter->SetArmor(std::clamp(10 - (Progress / 15), 0, 10));
-}
-
-int CGameControllerDDRace::SnapPlayerScore(int SnappingClient, CPlayer *pPlayer)
-{
-	bool HideScore = g_Config.m_SvHideScore && SnappingClient != pPlayer->GetCid();
-	std::optional<float> Score = GameServer()->Score()->PlayerData(pPlayer->GetCid())->m_BestTime;
-
-	if(Server()->IsSixup(SnappingClient))
-	{
-		if(!Score.has_value() || HideScore)
-			return protocol7::FinishTime::NOT_FINISHED;
-
-		// Times are in milliseconds for 0.7
-		return Score.value() * 1000.0f;
-	}
-
-	// This is the time sent to the player while ingame (do not confuse to the one reported to the master server).
-	// Due to clients expecting this as a negative value, we have to make sure it's negative.
-	// Special numbers:
-	// -9999 or FinishTime::NOT_FINISHED_TIMESCORE: means no time and isn't displayed in the scoreboard.
-	if(!Score.has_value() || HideScore)
-		return FinishTime::NOT_FINISHED_TIMESCORE;
-
-	// Times are in seconds for 0.6
-	int ScoreSeconds = Score.value();
-
-	// shift the time by a second if the player actually took 9999
-	// seconds to finish the map.
-	if(-ScoreSeconds == FinishTime::NOT_FINISHED_TIMESCORE)
-		return -ScoreSeconds - 1;
-	return -ScoreSeconds;
-}
-
-IGameController::CFinishTime CGameControllerDDRace::SnapPlayerTime(int SnappingClient, CPlayer *pPlayer)
-{
-	std::optional<float> BestTime = GameServer()->Score()->PlayerData(pPlayer->GetCid())->m_BestTime;
-	if(BestTime.has_value() && (!g_Config.m_SvHideScore || SnappingClient == pPlayer->GetCid()))
-	{
-		// same as in str_time_float
-		int64_t TimeMilliseconds = static_cast<int64_t>(std::roundf(BestTime.value() * 1000.0f));
-		int Seconds = static_cast<int>(TimeMilliseconds / 1000);
-		int Millis = static_cast<int>(TimeMilliseconds % 1000);
-		return CFinishTime(Seconds, Millis);
-	}
-	return CFinishTime::NotFinished();
 }
 
 void CGameControllerDDRace::OnPlayerConnect(CPlayer *pPlayer)
@@ -180,11 +133,8 @@ void CGameControllerDDRace::OnPlayerConnect(CPlayer *pPlayer)
 	if(!Server()->ClientPrevIngame(ClientId))
 	{
 		char aBuf[512];
-		str_format(aBuf, sizeof(aBuf), "'%s' entered and joined the %s", Server()->ClientName(ClientId), GetTeamName(pPlayer->GetTeam()));
+		str_format(aBuf, sizeof(aBuf), "%s подключился", Server()->ClientName(ClientId));
 		GameServer()->SendChat(-1, TEAM_ALL, aBuf, -1, CGameContext::FLAG_SIX);
-
-		GameServer()->SendChatTarget(ClientId, "DDraceNetwork Mod. Version: " GAME_VERSION);
-		GameServer()->SendChatTarget(ClientId, "please visit DDNet.org or say /info and make sure to read our /rules");
 	}
 }
 
@@ -221,9 +171,7 @@ void CGameControllerDDRace::Tick()
 
 void CGameControllerDDRace::DoTeamChange(class CPlayer *pPlayer, int Team, bool DoChatMsg)
 {
-	if(!IsValidTeam(Team))
-		return;
-
+	Team = ClampTeam(Team);
 	if(Team == pPlayer->GetTeam())
 		return;
 
@@ -233,7 +181,6 @@ void CGameControllerDDRace::DoTeamChange(class CPlayer *pPlayer, int Team, bool 
 	{
 		if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && pCharacter)
 		{
-			Teams().OnCharacterDeath(pPlayer->GetCid(), WEAPON_GAME);
 			// Joining spectators should not kill a locked team, but should still
 			// check if the team finished by you leaving it.
 			int DDRTeam = pCharacter->Team();

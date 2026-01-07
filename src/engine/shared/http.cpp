@@ -18,6 +18,11 @@
 
 #include <curl/curl.h>
 
+// There is a stray constant on Windows/MSVC...
+#ifdef ERROR
+#undef ERROR
+#endif
+
 static int CurlDebug(CURL *pHandle, curl_infotype Type, char *pData, size_t DataSize, void *pUser)
 {
 	char TypeChar;
@@ -214,7 +219,7 @@ bool CHttpRequest::ConfigureHandle(void *pHandle)
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
-	curl_easy_setopt(pH, CURLOPT_IPRESOLVE, m_IpResolve == IPRESOLVE::V4 ? CURL_IPRESOLVE_V4 : (m_IpResolve == IPRESOLVE::V6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_WHATEVER));
+	curl_easy_setopt(pH, CURLOPT_IPRESOLVE, m_IpResolve == IPRESOLVE::V4 ? CURL_IPRESOLVE_V4 : m_IpResolve == IPRESOLVE::V6 ? CURL_IPRESOLVE_V6 : CURL_IPRESOLVE_WHATEVER);
 	if(g_Config.m_Bindaddr[0] != '\0')
 	{
 		curl_easy_setopt(pH, CURLOPT_INTERFACE, g_Config.m_Bindaddr);
@@ -228,7 +233,7 @@ bool CHttpRequest::ConfigureHandle(void *pHandle)
 	}
 
 #ifdef CONF_PLATFORM_ANDROID
-	curl_easy_setopt(pH, CURLOPT_CAPATH, "/system/etc/security/cacerts");
+	curl_easy_setopt(pH, CURLOPT_CAINFO, "data/cacert.pem");
 #endif
 
 	switch(m_Type)

@@ -1,6 +1,5 @@
 #include <base/logger.h>
 #include <base/system.h>
-#include <base/windows.h>
 
 #include <engine/console.h>
 #include <engine/engine.h>
@@ -157,11 +156,11 @@ int main(int argc, const char **argv)
 	// execute autoexec file
 	if(pStorage->FileExists(AUTOEXEC_SERVER_FILE, IStorage::TYPE_ALL))
 	{
-		pConsole->ExecuteFile(AUTOEXEC_SERVER_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
+		pConsole->ExecuteFile(AUTOEXEC_SERVER_FILE);
 	}
 	else // fallback
 	{
-		pConsole->ExecuteFile(AUTOEXEC_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
+		pConsole->ExecuteFile(AUTOEXEC_FILE);
 	}
 
 	// parse the command line arguments
@@ -173,7 +172,6 @@ int main(int argc, const char **argv)
 	pConfigManager->SetReadOnly("sv_rescue", true);
 	pConfigManager->SetReadOnly("sv_port", true);
 	pConfigManager->SetReadOnly("bindaddr", true);
-	pConfigManager->SetReadOnly("logfile", true);
 
 	if(g_Config.m_Logfile[0])
 	{

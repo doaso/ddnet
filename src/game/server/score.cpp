@@ -348,7 +348,7 @@ void CScore::LoadTeam(const char *pCode, int ClientId)
 		GameServer()->SendChatTarget(ClientId, "Team load already in progress");
 		return;
 	}
-	if(!pController->Teams().IsValidTeamNumber(Team) || (g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team == TEAM_FLOCK))
+	if(Team < TEAM_FLOCK || Team >= MAX_CLIENTS || (g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team == TEAM_FLOCK))
 	{
 		GameServer()->SendChatTarget(ClientId, "You have to be in a team (from 1-63)");
 		return;
@@ -394,4 +394,53 @@ void CScore::GetSaves(int ClientId)
 	if(RateLimitPlayer(ClientId))
 		return;
 	ExecPlayerThread(CScoreWorker::GetSaves, "get saves", ClientId, "", 0);
+}
+
+void CScore::RegisterAccount(const char *pNickname, const char *pPassword)
+{
+    auto Tmp = std::make_unique<CSqlRegisterRequest>(nullptr);
+    str_copy(Tmp->m_aName, pNickname, sizeof(Tmp->m_aName));
+    str_copy(Tmp->m_aPassword, pPassword, sizeof(Tmp->m_aPassword));
+
+    m_pPool->Execute(CScoreWorker::RegisterAccount, std::move(Tmp), "register account");
+}
+
+
+void CScore::ChangePasswordAccount(const char *pNickname, const char *pPassword)
+{
+    auto Tmp = std::make_unique<CSqlRegisterRequest>(nullptr);
+    str_copy(Tmp->m_aName, pNickname, sizeof(Tmp->m_aName));
+    str_copy(Tmp->m_aPassword, pPassword, sizeof(Tmp->m_aPassword));
+
+    m_pPool->Execute(CScoreWorker::ChangePasswordAccount, std::move(Tmp), "change password");
+}
+
+
+void CScore::ChangeRoleAccount(const char *pNickname, int Role)
+{
+    auto Tmp = std::make_unique<CSqlRegisterRequest>(nullptr);
+    str_copy(Tmp->m_aName, pNickname, sizeof(Tmp->m_aName));
+    Tmp->m_Role = Role;
+
+    m_pPool->Execute(CScoreWorker::ChangeRoleAccount, std::move(Tmp), "change role");
+}
+
+
+void CScore::ChangePointsAccount(const char *pNickname, int Points)
+{
+    auto Tmp = std::make_unique<CSqlRegisterRequest>(nullptr);
+    str_copy(Tmp->m_aName, pNickname, sizeof(Tmp->m_aName));
+    Tmp->m_Points = Points;
+
+    m_pPool->Execute(CScoreWorker::ChangePointsAccount, std::move(Tmp), "change points");
+}
+
+
+void CScore::ChangeNetAdressAccount(const char *pNickname, const char* pNetAdress)
+{
+    auto Tmp = std::make_unique<CSqlRegisterRequest>(nullptr);
+    str_copy(Tmp->m_aName, pNickname, sizeof(Tmp->m_aName));
+    str_copy(Tmp->m_aNetAdress, pNetAdress, sizeof(Tmp->m_aNetAdress));
+
+    m_pPool->Execute(CScoreWorker::ChangeNetAdressAccount, std::move(Tmp), "change netadress");
 }

@@ -52,6 +52,12 @@ struct CScorePlayerResult : ISqlResult
 			float m_aTimeCp[NUM_CHECKPOINTS];
 			int m_Birthday; // 0 indicates no birthday
 			char m_aRequestedPlayer[MAX_NAME_LENGTH];
+
+                        bool m_IsHaveAccount = false;
+                        int m_AccountId = -1;
+                        char m_aAccountPassword[64];
+                        int m_AccountRole = 0;
+                        int m_AccountPoints = 0;
 		} m_Info = {};
 		struct
 		{
@@ -59,6 +65,11 @@ struct CScorePlayerResult : ISqlResult
 			char m_aServer[32 + 1];
 			char m_aMap[MAX_MAP_LENGTH + 1];
 		} m_MapVote;
+                struct
+                {
+                        char m_aNetAdress[NETADDR_MAXSTRSIZE];
+                        char m_aNickname[MAX_NAME_LENGTH];
+                } m_NetAdress;
 	} m_Data = {}; // PLAYER_INFO
 
 	void SetVariant(Variant v);
@@ -95,6 +106,17 @@ struct CSqlPlayerRequest : ISqlData
 	// relevant for /top5 kind of requests
 	int m_Offset;
 	char m_aServer[5];
+};
+
+struct CSqlRegisterRequest : ISqlData
+{
+    CSqlRegisterRequest(std::shared_ptr<CScorePlayerResult> pResult) :
+        ISqlData(std::move(pResult)) {}
+    char m_aName[MAX_NAME_LENGTH];
+    char m_aPassword[64];
+    int m_Role;
+    int m_Points;
+    char m_aNetAdress[NETADDR_MAXSTRSIZE];
 };
 
 struct CScoreRandomMapResult : ISqlResult
@@ -234,7 +256,7 @@ public:
 
 	void Reset()
 	{
-		m_BestTime.reset();
+		m_BestTime = 0;
 		for(float &BestTimeCp : m_aBestTimeCp)
 			BestTimeCp = 0;
 
@@ -254,7 +276,7 @@ public:
 			m_aBestTimeCp[i] = aTimeCp[i];
 	}
 
-	std::optional<float> m_BestTime;
+	float m_BestTime;
 	float m_aBestTimeCp[NUM_CHECKPOINTS];
 
 	int m_RecordStopTick;
@@ -313,6 +335,12 @@ struct CScoreWorker
 
 	static bool SaveScore(IDbConnection *pSqlServer, const ISqlData *pGameData, Write w, char *pError, int ErrorSize);
 	static bool SaveTeamScore(IDbConnection *pSqlServer, const ISqlData *pGameData, Write w, char *pError, int ErrorSize);
+
+        static bool RegisterAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangePasswordAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangeRoleAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangePointsAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangeNetAdressAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
 };
 
 #endif // GAME_SERVER_SCOREWORKER_H

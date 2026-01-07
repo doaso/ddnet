@@ -56,12 +56,13 @@ void CTooltips::OnRender()
 	{
 		CTooltip &Tooltip = m_ActiveTooltip.value();
 
-		if(Ui()->HotItem() != Tooltip.m_pId || !Tooltip.m_Rect.Inside(Ui()->MousePos()))
+		if(Ui()->HotItem() != Tooltip.m_pId)
 		{
 			Tooltip.m_OnScreen = false;
 			ClearActiveTooltip();
 			return;
 		}
+
 		if(!Tooltip.m_OnScreen)
 			return;
 

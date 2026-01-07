@@ -30,13 +30,13 @@ public:
 		Class NSAutoreleasePoolClass = (Class)objc_getClass("NSAutoreleasePool");
 		m_Pool = class_createInstance(NSAutoreleasePoolClass, 0);
 		SEL selector = sel_registerName("init");
-		((id (*)(id, SEL))objc_msgSend)(m_Pool, selector);
+		((id(*)(id, SEL))objc_msgSend)(m_Pool, selector);
 	}
 
 	~CAutoreleasePool()
 	{
 		SEL selector = sel_registerName("drain");
-		((id (*)(id, SEL))objc_msgSend)(m_Pool, selector);
+		((id(*)(id, SEL))objc_msgSend)(m_Pool, selector);
 	}
 };
 #endif
@@ -106,7 +106,7 @@ public:
 	bool RunCommand(const CCommandBuffer::SCommand *pBaseCommand);
 };
 
-struct SBackendCapabilities
+struct SBackendCapabilites
 {
 	bool m_TileBuffering;
 	bool m_QuadBuffering;
@@ -215,7 +215,7 @@ class CGraphicsBackend_SDL_GL : public CGraphicsBackend_Threaded
 
 	int m_NumScreens;
 
-	SBackendCapabilities m_Capabilities;
+	SBackendCapabilites m_Capabilites;
 
 	char m_aVendorString[gs_GpuInfoStringSize] = {};
 	char m_aVersionString[gs_GpuInfoStringSize] = {};
@@ -247,8 +247,9 @@ public:
 	void GetCurrentVideoMode(CVideoMode &CurMode, float HiDPIScale, int MaxWindowWidth, int MaxWindowHeight, int ScreenId) override;
 
 	void Minimize() override;
+	void Maximize() override;
 	void SetWindowParams(int FullscreenMode, bool IsBorderless) override;
-	bool SetWindowScreen(int Index, bool MoveToCenter) override;
+	bool SetWindowScreen(int Index) override;
 	bool UpdateDisplayMode(int Index) override;
 	int GetWindowScreen() override;
 	int WindowActive() override;
@@ -264,13 +265,13 @@ public:
 
 	bool GetDriverVersion(EGraphicsDriverAgeType DriverAgeType, int &Major, int &Minor, int &Patch, const char *&pName, EBackendType BackendType) override;
 	bool IsConfigModernAPI() override { return IsModernAPI(m_BackendType); }
-	bool UseTrianglesAsQuad() override { return m_Capabilities.m_TrianglesAsQuads; }
-	bool HasTileBuffering() override { return m_Capabilities.m_TileBuffering; }
-	bool HasQuadBuffering() override { return m_Capabilities.m_QuadBuffering; }
-	bool HasTextBuffering() override { return m_Capabilities.m_TextBuffering; }
-	bool HasQuadContainerBuffering() override { return m_Capabilities.m_QuadContainerBuffering; }
-	bool Uses2DTextureArrays() override { return m_Capabilities.m_2DArrayTextures; }
-	bool HasTextureArraysSupport() override { return m_Capabilities.m_2DArrayTextures || m_Capabilities.m_3DTextures; }
+	bool UseTrianglesAsQuad() override { return m_Capabilites.m_TrianglesAsQuads; }
+	bool HasTileBuffering() override { return m_Capabilites.m_TileBuffering; }
+	bool HasQuadBuffering() override { return m_Capabilites.m_QuadBuffering; }
+	bool HasTextBuffering() override { return m_Capabilites.m_TextBuffering; }
+	bool HasQuadContainerBuffering() override { return m_Capabilites.m_QuadContainerBuffering; }
+	bool Uses2DTextureArrays() override { return m_Capabilites.m_2DArrayTextures; }
+	bool HasTextureArraysSupport() override { return m_Capabilites.m_2DArrayTextures || m_Capabilites.m_3DTextures; }
 
 	const char *GetErrorString() override
 	{

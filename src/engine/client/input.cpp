@@ -5,7 +5,6 @@
 #include "keynames.h"
 
 #include <base/system.h>
-#include <base/windows.h>
 
 #include <engine/console.h>
 #include <engine/graphics.h>
@@ -38,8 +37,7 @@
 void CInput::AddKeyEvent(int Key, int Flags)
 {
 	dbg_assert(Key >= KEY_FIRST && Key < KEY_LAST, "Key invalid: %d", Key);
-	dbg_assert((Flags & (FLAG_PRESS | FLAG_RELEASE)) != 0 && (Flags & ~(FLAG_PRESS | FLAG_RELEASE | FLAG_REPEAT)) == 0, "Flags invalid (unknown flag): %d", Flags);
-	dbg_assert((Flags & FLAG_REPEAT) == 0 || (Flags & FLAG_PRESS) != 0, "Flags invalid (key repeat implies key press): %d", Flags);
+	dbg_assert((Flags & (FLAG_PRESS | FLAG_RELEASE)) != 0 && (Flags & ~(FLAG_PRESS | FLAG_RELEASE)) == 0, "Flags invalid");
 
 	CEvent Event;
 	Event.m_Key = Key;
@@ -736,7 +734,7 @@ int CInput::Update()
 
 		// handle keys
 		case SDL_KEYDOWN:
-			AddKeyEventChecked(TranslateKeyEventKey(Event.key), IInput::FLAG_PRESS | (Event.key.repeat != 0 ? FLAG_REPEAT : 0));
+			AddKeyEventChecked(TranslateKeyEventKey(Event.key), IInput::FLAG_PRESS);
 			break;
 
 		case SDL_KEYUP:
@@ -795,11 +793,6 @@ int CInput::Update()
 			// shortcuts
 			switch(Event.window.event)
 			{
-#if SDL_VERSION_ATLEAST(2, 0, 18)
-			case SDL_WINDOWEVENT_DISPLAY_CHANGED:
-				Graphics()->SwitchWindowScreen(Event.display.data1, false);
-				break;
-#endif
 			case SDL_WINDOWEVENT_MOVED:
 				Graphics()->Move(Event.window.data1, Event.window.data2);
 				break;
@@ -909,28 +902,8 @@ void CInput::ProcessSystemMessage(SDL_SysWMmsg *pMsg)
 #endif
 }
 
-#if defined(CONF_PLATFORM_EMSCRIPTEN)
-extern "C" {
-
-// This will be called from Emscripten JS code
-char aEmscriptenDropFile[IO_MAX_PATH_LENGTH] = "";
-void EmscriptenCallbackDropFile(const char *pFile)
-{
-	str_copy(aEmscriptenDropFile, pFile);
-}
-}
-#endif
-
 bool CInput::GetDropFile(char *aBuf, int Len)
 {
-#if defined(CONF_PLATFORM_EMSCRIPTEN)
-	if(aEmscriptenDropFile[0] != '\0')
-	{
-		str_copy(aBuf, aEmscriptenDropFile, Len);
-		aEmscriptenDropFile[0] = '\0';
-		return true;
-	}
-#endif
 	if(m_aDropFile[0] != '\0')
 	{
 		str_copy(aBuf, m_aDropFile, Len);

@@ -75,7 +75,8 @@ void CCommandProcessorFragment_OpenGL::SetState(const CCommandBuffer::SState &St
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 		break;
 	default:
-		dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);
+		dbg_assert(false, "Invalid blend mode: %d", (int)State.m_BlendMode);
+		dbg_break();
 	};
 	m_LastBlendMode = State.m_BlendMode;
 
@@ -130,7 +131,8 @@ void CCommandProcessorFragment_OpenGL::SetState(const CCommandBuffer::SState &St
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 					break;
 				default:
-					dbg_assert_failed("Invalid wrap mode: %d", (int)State.m_WrapMode);
+					dbg_assert(false, "Invalid wrap mode: %d", (int)State.m_WrapMode);
+					dbg_break();
 				};
 				m_vTextures[State.m_Texture].m_LastWrapMode = State.m_WrapMode;
 			}
@@ -240,7 +242,7 @@ static const char *GetGLErrorName(GLenum Type)
 	else if(Type == GL_DEBUG_TYPE_POP_GROUP)
 		return "POP_GROUP";
 	return "UNKNOWN";
-}
+};
 
 static const char *GetGLSeverity(GLenum Type)
 {
@@ -963,7 +965,8 @@ void CCommandProcessorFragment_OpenGL::Cmd_Render(const CCommandBuffer::SCommand
 		glDrawArrays(GL_TRIANGLES, 0, pCommand->m_PrimCount * 3);
 		break;
 	default:
-		dbg_assert_failed("Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_assert(false, "Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_break();
 	};
 #endif
 }
@@ -1135,7 +1138,8 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 			break;
 		default:
-			dbg_assert_failed("Invalid blend mode: %d", (int)State.m_BlendMode);
+			dbg_assert(false, "Invalid blend mode: %d", (int)State.m_BlendMode);
+			dbg_break();
 		};
 
 		m_LastBlendMode = State.m_BlendMode;
@@ -1226,7 +1230,8 @@ void CCommandProcessorFragment_OpenGL2::SetState(const CCommandBuffer::SState &S
 				}
 				break;
 			default:
-				dbg_assert_failed("Invalid wrap mode: %d", (int)State.m_WrapMode);
+				dbg_assert(false, "Invalid wrap mode: %d", (int)State.m_WrapMode);
+				dbg_break();
 			};
 			m_vTextures[State.m_Texture].m_LastWrapMode = State.m_WrapMode;
 		}
@@ -1820,7 +1825,8 @@ void CCommandProcessorFragment_OpenGL2::Cmd_RenderTex3D(const CCommandBuffer::SC
 		glDrawArrays(GL_TRIANGLES, 0, pCommand->m_PrimCount * 3);
 		break;
 	default:
-		dbg_assert_failed("Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_assert(false, "Invalid primitive type: %d", (int)pCommand->m_PrimType);
+		dbg_break();
 	};
 
 	glDisableClientState(GL_VERTEX_ARRAY);

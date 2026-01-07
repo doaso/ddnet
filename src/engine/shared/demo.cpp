@@ -989,25 +989,24 @@ void CDemoPlayer::Play()
 	}
 }
 
-bool CDemoPlayer::SeekPercent(float Percent)
+int CDemoPlayer::SeekPercent(float Percent)
 {
 	int WantedTick = m_Info.m_Info.m_FirstTick + round_truncate((m_Info.m_Info.m_LastTick - m_Info.m_Info.m_FirstTick) * Percent);
 	return SetPos(WantedTick);
 }
 
-bool CDemoPlayer::SeekTime(float Seconds)
+int CDemoPlayer::SeekTime(float Seconds)
 {
 	int WantedTick = m_Info.m_Info.m_CurrentTick + round_truncate(Seconds * (float)SERVER_TICK_SPEED);
 	return SetPos(WantedTick);
 }
 
-bool CDemoPlayer::SeekTick(ETickOffset TickOffset)
+int CDemoPlayer::SeekTick(ETickOffset TickOffset)
 {
 	int WantedTick;
 	switch(TickOffset)
 	{
 	case TICK_CURRENT:
-		// TODO: WantedTick == m_Info.m_NextTick is used to update spectator info when paused so seeking must be done
 		WantedTick = m_Info.m_Info.m_CurrentTick;
 		break;
 	case TICK_PREVIOUS:
@@ -1017,7 +1016,9 @@ bool CDemoPlayer::SeekTick(ETickOffset TickOffset)
 		WantedTick = m_Info.m_NextTick;
 		break;
 	default:
-		dbg_assert_failed("Invalid TickOffset");
+		dbg_assert(false, "Invalid TickOffset");
+		WantedTick = -1;
+		break;
 	}
 
 	// +1 because SetPos will seek until the given tick is the next tick that
@@ -1025,12 +1026,10 @@ bool CDemoPlayer::SeekTick(ETickOffset TickOffset)
 	return SetPos(WantedTick + 1);
 }
 
-bool CDemoPlayer::SetPos(int WantedTick)
+int CDemoPlayer::SetPos(int WantedTick)
 {
 	if(!m_File)
-		return false;
-
-	// TODO: WantedTick == m_Info.m_NextTick is used to update spectator info when paused so seeking must be done
+		return -1;
 
 	int LastSeekableTick = m_Info.m_Info.m_LastTick;
 	if(m_Info.m_Info.m_LiveDemo)
@@ -1046,16 +1045,6 @@ bool CDemoPlayer::SetPos(int WantedTick)
 	{
 		WantedTick = std::clamp(WantedTick, m_Info.m_Info.m_FirstTick, LastSeekableTick);
 	}
-
-	// Just the next tick
-	if(WantedTick == m_Info.m_NextTick + 1)
-	{
-		// This does handle looping correctly
-		DoTick();
-		Play();
-		return true;
-	}
-
 	const int KeyFrameWantedTick = WantedTick - 5; // -5 because we have to have a current tick and previous tick when we do the playback
 	const float Percent = (KeyFrameWantedTick - m_Info.m_Info.m_FirstTick) / (float)(m_Info.m_Info.m_LastTick - m_Info.m_Info.m_FirstTick);
 
@@ -1066,19 +1055,16 @@ bool CDemoPlayer::SetPos(int WantedTick)
 	while(KeyFrame > 0 && m_vKeyFrames[KeyFrame].m_Tick > KeyFrameWantedTick)
 		KeyFrame--;
 
-	if(WantedTick <= m_Info.m_Info.m_CurrentTick || // if we are seeking backwards (must be <= for high bandwidth demos) OR
-		m_Info.m_Info.m_CurrentTick < m_vKeyFrames[KeyFrame].m_Tick || // we are before the wanted KeyFrame OR
-		(KeyFrame != m_vKeyFrames.size() - 1 && m_Info.m_Info.m_CurrentTick >= m_vKeyFrames[KeyFrame + 1].m_Tick)) // we are after the wanted KeyFrame
+	// seek to the correct key frame
+	if(io_seek(m_File, m_vKeyFrames[KeyFrame].m_Filepos, IOSEEK_START) != 0)
 	{
-		if(io_seek(m_File, m_vKeyFrames[KeyFrame].m_Filepos, IOSEEK_START) != 0)
-		{
-			Stop("Error seeking keyframe position");
-			return false;
-		}
-		m_Info.m_NextTick = -1;
-		m_Info.m_Info.m_CurrentTick = -1;
-		m_Info.m_PreviousTick = -1;
+		Stop("Error seeking keyframe position");
+		return -1;
 	}
+
+	m_Info.m_NextTick = -1;
+	m_Info.m_Info.m_CurrentTick = -1;
+	m_Info.m_PreviousTick = -1;
 
 	// playback everything until we hit our tick
 	while(m_Info.m_NextTick < WantedTick)
@@ -1086,13 +1072,13 @@ bool CDemoPlayer::SetPos(int WantedTick)
 		DoTick();
 		if(!IsPlaying())
 		{
-			return false;
+			return -1;
 		}
 	}
 
 	Play();
 
-	return true;
+	return 0;
 }
 
 void CDemoPlayer::SetSpeed(float Speed)
@@ -1199,7 +1185,7 @@ void CDemoPlayer::Update(bool RealTime)
 	{
 		if(m_Info.m_Info.m_LiveDemo &&
 			m_Info.m_Info.m_Speed > 1.0f &&
-			m_Info.m_Info.m_LastTick - m_Info.m_Info.m_CurrentTick <= (DeltaTime * (double)m_Info.m_Info.m_Speed / Freq + 2) * (float)SERVER_TICK_SPEED)
+			m_Info.m_Info.m_LastTick - m_Info.m_Info.m_CurrentTick <= (DeltaTime * (double)m_Info.m_Info.m_Speed / Freq + 2) * SERVER_TICK_SPEED)
 		{
 			// Reset to default speed if we are fast-forwarding to the end of a live demo,
 			// to prevent playback error due to final demo chunk data still being written.

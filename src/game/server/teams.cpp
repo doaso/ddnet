@@ -380,75 +380,37 @@ void CGameTeams::CheckTeamFinished(int Team)
 	}
 }
 
-bool CGameTeams::CanJoinTeam(int ClientId, int Team, char *pError, int ErrorSize) const
+const char *CGameTeams::SetCharacterTeam(int ClientId, int Team)
 {
 	int CurrentTeam = m_Core.Team(ClientId);
 
 	if(ClientId < 0 || ClientId >= MAX_CLIENTS)
-	{
-		str_format(pError, ErrorSize, "Invalid client ID: %d", ClientId);
-		return false;
-	}
-	if(!IsValidTeamNumber(Team) && Team != TEAM_SUPER)
-	{
-		str_format(pError, ErrorSize, "Invalid team number: %d", Team);
-		return false;
-	}
+		return "Invalid client ID";
+	if(Team < 0 || Team > NUM_DDRACE_TEAMS)
+		return "Invalid team number";
 	if(Team != TEAM_SUPER && m_aTeamState[Team] > ETeamState::OPEN && !m_aPractice[Team] && !m_aTeamFlock[Team])
-	{
-		str_copy(pError, "This team started already", ErrorSize);
-		return false;
-	}
+		return "Команда начала забег";
 	if(CurrentTeam == Team)
-	{
-		str_copy(pError, "You are in this team already", ErrorSize);
-		return false;
-	}
+		return "Вы уже в команде";
 	if(!Character(ClientId))
-	{
-		str_copy(pError, "You can't change teams while you are dead/a spectator.", ErrorSize);
-		return false;
-	}
+		return "Your character is not valid";
 	if(Team == TEAM_SUPER && !Character(ClientId)->IsSuper())
-	{
-		str_copy(pError, "You can't join super team if you don't have super rights", ErrorSize);
-		return false;
-	}
+		return "You can't join super team if you don't have super rights";
 	if(Team != TEAM_SUPER && Character(ClientId)->m_DDRaceState != ERaceState::NONE && (m_aTeamState[CurrentTeam] < ETeamState::FINISHED || Team != 0))
-	{
-		str_copy(pError, "You have started racing already", ErrorSize);
-		return false;
-	}
+		return "Вы уже начали забег";
 	// No cheating through noob filter with practice and then leaving team
 	if(m_aPractice[CurrentTeam] && !m_pGameContext->PracticeByDefault())
-	{
-		str_copy(pError, "You have used practice mode already", ErrorSize);
-		return false;
-	}
+		return "You have used practice mode already";
 
 	// you can not join a team which is currently in the process of saving,
 	// because the save-process can fail and then the team is reset into the game
 	if(Team != TEAM_SUPER && GetSaving(Team))
-	{
-		str_copy(pError, "This team is currently saving", ErrorSize);
-		return false;
-	}
+		return "This team is currently saving";
 	if(CurrentTeam != TEAM_SUPER && GetSaving(CurrentTeam))
-	{
-		str_copy(pError, "Your team is currently saving", ErrorSize);
-		return false;
-	}
-
-	return true;
-}
-
-bool CGameTeams::SetCharacterTeam(int ClientId, int Team, char *pError, int ErrorSize)
-{
-	if(!CanJoinTeam(ClientId, Team, pError, ErrorSize))
-		return false;
+		return "Your team is currently saving";
 
 	SetForceCharacterTeam(ClientId, Team);
-	return true;
+	return nullptr;
 }
 
 void CGameTeams::SetForceCharacterTeam(int ClientId, int Team)
@@ -727,11 +689,11 @@ void CGameTeams::OnTeamFinish(int Team, CPlayer **Players, unsigned int Size, in
 	{
 		aPlayerCids[i] = Players[i]->GetCid();
 
-		if(g_Config.m_SvRejoinTeam0 && g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && (!IsValidTeamNumber(m_Core.Team(Players[i]->GetCid())) || !m_aTeamLocked[m_Core.Team(Players[i]->GetCid())]))
+		if(g_Config.m_SvRejoinTeam0 && g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && (m_Core.Team(Players[i]->GetCid()) >= TEAM_SUPER || !m_aTeamLocked[m_Core.Team(Players[i]->GetCid())]))
 		{
 			SetForceCharacterTeam(Players[i]->GetCid(), TEAM_FLOCK);
 			char aBuf[512];
-			str_format(aBuf, sizeof(aBuf), "'%s' joined team 0",
+			str_format(aBuf, sizeof(aBuf), "%s вошел в команду 0",
 				GameServer()->Server()->ClientName(Players[i]->GetCid()));
 			GameServer()->SendChat(-1, TEAM_ALL, aBuf);
 		}
@@ -741,22 +703,23 @@ void CGameTeams::OnTeamFinish(int Team, CPlayer **Players, unsigned int Size, in
 		GameServer()->Score()->SaveTeamScore(Team, aPlayerCids, Size, TimeTicks, pTimestamp);
 }
 
-void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestamp)
+void CGameTeams::OnFinish(CPlayer *Player, int TimeTicks, const char *pTimestamp)
 {
-	if(!pPlayer || !pPlayer->IsPlaying())
+	if(!Player || !Player->IsPlaying())
 		return;
 
+        if (Player->m_IsLoginOrRegister == false) {
 	float Time = TimeTicks / (float)Server()->TickSpeed();
 
 	// TODO:DDRace:btd: this ugly
-	const int ClientId = pPlayer->GetCid();
+	const int ClientId = Player->GetCid();
 	CPlayerData *pData = GameServer()->Score()->PlayerData(ClientId);
 
 	char aBuf[128];
-	SetLastTimeCp(pPlayer, -1);
+	SetLastTimeCp(Player, -1);
 	// Note that the "finished in" message is parsed by the client
 	str_format(aBuf, sizeof(aBuf),
-		"%s finished in: %d minute(s) %5.2f second(s)",
+		"%s прошел карту за %d минут %5.2f секунд",
 		Server()->ClientName(ClientId), (int)Time / 60,
 		Time - ((int)Time / 60 * 60));
 	if(g_Config.m_SvHideScore)
@@ -764,26 +727,26 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 	else
 		GameServer()->SendChat(-1, TEAM_ALL, aBuf, -1., CGameContext::FLAG_SIX);
 
-	float Diff = absolute(Time - pData->m_BestTime.value_or(0.0f));
+	float Diff = absolute(Time - pData->m_BestTime);
 
-	if(Time - pData->m_BestTime.value_or(0.0f) < 0)
+	if(Time - pData->m_BestTime < 0)
 	{
 		// new record \o/
 		pData->m_RecordStopTick = Server()->Tick() + Server()->TickSpeed();
 		pData->m_RecordFinishTime = Time;
 
 		if(Diff >= 60)
-			str_format(aBuf, sizeof(aBuf), "New record: %d minute(s) %5.2f second(s) better.",
+			str_format(aBuf, sizeof(aBuf), "Новый рекорд на %d минут %5.2f секунд быстрее",
 				(int)Diff / 60, Diff - ((int)Diff / 60 * 60));
 		else
-			str_format(aBuf, sizeof(aBuf), "New record: %5.2f second(s) better.",
+			str_format(aBuf, sizeof(aBuf), "Новый рекорд на %5.2f секунд быстрее",
 				Diff);
 		if(g_Config.m_SvHideScore)
 			GameServer()->SendChatTarget(ClientId, aBuf, CGameContext::FLAG_SIX);
 		else
 			GameServer()->SendChat(-1, TEAM_ALL, aBuf, -1, CGameContext::FLAG_SIX);
 	}
-	else if(pData->m_BestTime.has_value()) // tee has already finished?
+	else if(pData->m_BestTime != 0) // tee has already finished?
 	{
 		Server()->StopRecord(ClientId);
 
@@ -795,11 +758,11 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 		else
 		{
 			if(Diff >= 60)
-				str_format(aBuf, sizeof(aBuf), "%d minute(s) %5.2f second(s) worse, better luck next time.",
+				str_format(aBuf, sizeof(aBuf), "%d минут %5.2f секунд",
 					(int)Diff / 60, Diff - ((int)Diff / 60 * 60));
 			else
 				str_format(aBuf, sizeof(aBuf),
-					"%5.2f second(s) worse, better luck next time.",
+					"%5.2f секунд",
 					Diff);
 			GameServer()->SendChatTarget(ClientId, aBuf, CGameContext::FLAG_SIX); // this is private, sent only to the tee
 		}
@@ -816,7 +779,7 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 	if(!pData->m_BestTime || Time < pData->m_BestTime)
 	{
 		// update the score
-		pData->Set(Time, GetCurrentTimeCp(pPlayer));
+		pData->Set(Time, GetCurrentTimeCp(Player));
 		CallSaveScore = true;
 		NeedToSendNewPersonalRecord = true;
 	}
@@ -824,7 +787,7 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 	if(CallSaveScore)
 		if(g_Config.m_SvNamelessScore || !str_startswith(Server()->ClientName(ClientId), "nameless tee"))
 			GameServer()->Score()->SaveScore(ClientId, TimeTicks, pTimestamp,
-				GetCurrentTimeCp(pPlayer), pPlayer->m_NotEligibleForFinish);
+				GetCurrentTimeCp(Player), Player->m_NotEligibleForFinish);
 
 	bool NeedToSendNewServerRecord = false;
 	// update server best time
@@ -842,7 +805,7 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 		}
 	}
 
-	SetDDRaceState(pPlayer, ERaceState::FINISHED);
+	SetDDRaceState(Player, ERaceState::FINISHED);
 	if(NeedToSendNewServerRecord)
 	{
 		for(int i = 0; i < MAX_CLIENTS; i++)
@@ -853,29 +816,30 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 			}
 		}
 	}
-	if(!NeedToSendNewServerRecord && NeedToSendNewPersonalRecord && pPlayer->GetClientVersion() >= VERSION_DDRACE)
+	if(!NeedToSendNewServerRecord && NeedToSendNewPersonalRecord && Player->GetClientVersion() >= VERSION_DDRACE)
 	{
 		GameServer()->SendRecord(ClientId);
 	}
 
 	int TTime = (int)Time;
-	std::optional<float> Score = GameServer()->Score()->PlayerData(ClientId)->m_BestTime;
-	if(!Score.has_value() || TTime < Score.value())
+	if(!Player->m_Score.has_value() || TTime < Player->m_Score.value())
 	{
-		Server()->SetClientScore(ClientId, TTime);
+		Player->m_Score = TTime;
 	}
 
+        int Reward = 1 + rand() % 300;
+        Player->m_AccountPoints += Reward;
+        GameServer()->Score()->ChangePointsAccount(Server()->ClientName(ClientId), Player->m_AccountPoints);
+        str_format(aBuf, sizeof(aBuf), "Вы получили %d пойнтов за прохождение карты!", Reward);
+        GameServer()->SendChatTarget(ClientId, aBuf, CGameContext::FLAG_SIX);
+
 	// Confetti
-	CCharacter *pChar = pPlayer->GetCharacter();
+	CCharacter *pChar = Player->GetCharacter();
 	m_pGameContext->CreateFinishEffect(pChar->m_Pos, pChar->TeamMask());
+    }
 }
 
 CCharacter *CGameTeams::Character(int ClientId)
-{
-	return GameServer()->GetPlayerChar(ClientId);
-}
-
-const CCharacter *CGameTeams::Character(int ClientId) const
 {
 	return GameServer()->GetPlayerChar(ClientId);
 }
@@ -885,12 +849,7 @@ CPlayer *CGameTeams::GetPlayer(int ClientId)
 	return GameServer()->m_apPlayers[ClientId];
 }
 
-CGameContext *CGameTeams::GameServer()
-{
-	return m_pGameContext;
-}
-
-const CGameContext *CGameTeams::GameServer() const
+class CGameContext *CGameTeams::GameServer()
 {
 	return m_pGameContext;
 }
@@ -1186,7 +1145,7 @@ void CGameTeams::OnCharacterSpawn(int ClientId)
 	if(GetSaving(Team))
 		return;
 
-	if(!IsValidTeamNumber(Team) || !m_aTeamLocked[Team])
+	if(m_Core.Team(ClientId) >= TEAM_SUPER || !m_aTeamLocked[Team])
 	{
 		if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO)
 			SetForceCharacterTeam(ClientId, TEAM_FLOCK);
@@ -1276,13 +1235,13 @@ void CGameTeams::OnCharacterDeath(int ClientId, int Weapon)
 
 void CGameTeams::SetTeamLock(int Team, bool Lock)
 {
-	if(Team != TEAM_FLOCK && IsValidTeamNumber(Team))
+	if(Team > TEAM_FLOCK && Team < TEAM_SUPER)
 		m_aTeamLocked[Team] = Lock;
 }
 
 void CGameTeams::SetTeamFlock(int Team, bool Mode)
 {
-	if(Team != TEAM_FLOCK && IsValidTeamNumber(Team))
+	if(Team > TEAM_FLOCK && Team < TEAM_SUPER)
 		m_aTeamFlock[Team] = Mode;
 }
 
@@ -1293,7 +1252,7 @@ void CGameTeams::ResetInvited(int Team)
 
 void CGameTeams::SetClientInvited(int Team, int ClientId, bool Invited)
 {
-	if(Team != TEAM_FLOCK && IsValidTeamNumber(Team))
+	if(Team > TEAM_FLOCK && Team < TEAM_SUPER)
 	{
 		if(Invited)
 			m_aInvited[Team].set(ClientId);
@@ -1358,7 +1317,7 @@ ETeamState CGameTeams::GetTeamState(int Team) const
 
 bool CGameTeams::TeamLocked(int Team) const
 {
-	if(Team == TEAM_FLOCK || !IsValidTeamNumber(Team))
+	if(Team <= TEAM_FLOCK || Team >= TEAM_SUPER)
 		return false;
 
 	return m_aTeamLocked[Team];
@@ -1366,8 +1325,7 @@ bool CGameTeams::TeamLocked(int Team) const
 
 bool CGameTeams::TeamFlock(int Team) const
 {
-	// this is for team0mode, TEAM_FLOCK is handled differently
-	if(Team == TEAM_FLOCK || !IsValidTeamNumber(Team))
+	if(Team <= TEAM_FLOCK || Team >= TEAM_SUPER)
 		return false;
 
 	return m_aTeamFlock[Team];
@@ -1400,7 +1358,7 @@ void CGameTeams::SetSaving(int TeamId, std::shared_ptr<CScoreSaveResult> &SaveRe
 
 bool CGameTeams::GetSaving(int TeamId) const
 {
-	if(!IsValidTeamNumber(TeamId))
+	if(TeamId < TEAM_FLOCK || TeamId >= TEAM_SUPER)
 		return false;
 	if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && TeamId == TEAM_FLOCK)
 		return false;
@@ -1410,7 +1368,7 @@ bool CGameTeams::GetSaving(int TeamId) const
 
 void CGameTeams::SetPractice(int Team, bool Enabled)
 {
-	if(!IsValidTeamNumber(Team))
+	if(Team < TEAM_FLOCK || Team >= TEAM_SUPER)
 		return;
 	if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team == TEAM_FLOCK)
 	{
@@ -1424,7 +1382,7 @@ void CGameTeams::SetPractice(int Team, bool Enabled)
 
 bool CGameTeams::IsPractice(int Team)
 {
-	if(!IsValidTeamNumber(Team))
+	if(Team < TEAM_FLOCK || Team >= TEAM_SUPER)
 		return false;
 	if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO && Team == TEAM_FLOCK)
 	{
@@ -1435,9 +1393,4 @@ bool CGameTeams::IsPractice(int Team)
 	}
 
 	return m_aPractice[Team];
-}
-
-bool CGameTeams::IsValidTeamNumber(int Team) const
-{
-	return Team >= TEAM_FLOCK && Team < NUM_DDRACE_TEAMS - 1; // no TEAM_SUPER
 }

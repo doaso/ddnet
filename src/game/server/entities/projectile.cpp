@@ -32,6 +32,7 @@ CProjectile::CProjectile(
 	m_Direction = Dir;
 	m_LifeSpan = Span;
 	m_Owner = Owner;
+	//m_Damage = Damage;
 	m_SoundImpact = SoundImpact;
 	m_StartTick = Server()->Tick();
 	m_Explosive = Explosive;
@@ -60,23 +61,48 @@ vec2 CProjectile::GetPos(float Time)
 {
 	float Curvature = 0;
 	float Speed = 0;
-	CTuningParams *pTuning = GetTuning(m_TuneZone);
 
 	switch(m_Type)
 	{
 	case WEAPON_GRENADE:
-		Curvature = pTuning->m_GrenadeCurvature;
-		Speed = pTuning->m_GrenadeSpeed;
+		if(!m_TuneZone)
+		{
+			Curvature = Tuning()->m_GrenadeCurvature;
+			Speed = Tuning()->m_GrenadeSpeed;
+		}
+		else
+		{
+			Curvature = TuningList()[m_TuneZone].m_GrenadeCurvature;
+			Speed = TuningList()[m_TuneZone].m_GrenadeSpeed;
+		}
+
 		break;
 
 	case WEAPON_SHOTGUN:
-		Curvature = pTuning->m_ShotgunCurvature;
-		Speed = pTuning->m_ShotgunSpeed;
+		if(!m_TuneZone)
+		{
+			Curvature = Tuning()->m_ShotgunCurvature;
+			Speed = Tuning()->m_ShotgunSpeed;
+		}
+		else
+		{
+			Curvature = TuningList()[m_TuneZone].m_ShotgunCurvature;
+			Speed = TuningList()[m_TuneZone].m_ShotgunSpeed;
+		}
+
 		break;
 
 	case WEAPON_GUN:
-		Curvature = pTuning->m_GunCurvature;
-		Speed = pTuning->m_GunSpeed;
+		if(!m_TuneZone)
+		{
+			Curvature = Tuning()->m_GunCurvature;
+			Speed = Tuning()->m_GunSpeed;
+		}
+		else
+		{
+			Curvature = TuningList()[m_TuneZone].m_GunCurvature;
+			Speed = TuningList()[m_TuneZone].m_GunSpeed;
+		}
 		break;
 	}
 
@@ -340,7 +366,7 @@ void CProjectile::Snap(int SnappingClient)
 
 void CProjectile::SwapClients(int Client1, int Client2)
 {
-	m_Owner = m_Owner == Client1 ? Client2 : (m_Owner == Client2 ? Client1 : m_Owner);
+	m_Owner = m_Owner == Client1 ? Client2 : m_Owner == Client2 ? Client1 : m_Owner;
 }
 
 // DDRace

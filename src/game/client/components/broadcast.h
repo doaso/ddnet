@@ -5,6 +5,8 @@
 
 #include <engine/textrender.h>
 
+#include <generated/protocol.h>
+
 #include <game/client/component.h>
 
 class CBroadcast : public CComponent
@@ -16,6 +18,7 @@ class CBroadcast : public CComponent
 	STextContainerIndex m_TextContainerIndex;
 
 	void RenderServerBroadcast();
+	void OnBroadcastMessage(const CNetMsg_Sv_Broadcast *pMsg);
 
 public:
 	int Sizeof() const override { return sizeof(*this); }

@@ -1,6 +1,6 @@
 #include "color.h"
 
-#include "str.h"
+#include "system.h"
 
 template<typename T>
 std::optional<T> color_parse(const char *pStr)

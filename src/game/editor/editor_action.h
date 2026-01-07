@@ -1,13 +1,19 @@
 #ifndef GAME_EDITOR_EDITOR_ACTION_H
 #define GAME_EDITOR_EDITOR_ACTION_H
 
-#include <game/editor/map_object.h>
+#include <string>
 
-class IEditorAction : public CMapObject
+class CEditor;
+
+class IEditorAction
 {
 public:
-	IEditorAction(CEditorMap *pMap) :
-		CMapObject(pMap) {}
+	IEditorAction(CEditor *pEditor) :
+		m_pEditor(pEditor) {}
+
+	IEditorAction() = default;
+
+	virtual ~IEditorAction() = default;
 
 	virtual void Undo() = 0;
 	virtual void Redo() = 0;
@@ -17,6 +23,7 @@ public:
 	const char *DisplayText() const { return m_aDisplayText; }
 
 protected:
+	CEditor *m_pEditor;
 	char m_aDisplayText[256];
 };
 

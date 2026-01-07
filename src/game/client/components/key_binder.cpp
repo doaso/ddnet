@@ -9,7 +9,13 @@
 #include <game/client/ui.h>
 #include <game/localization.h>
 
-using namespace FontIcons;
+CKeyBinder::CKeyBinder()
+{
+	m_pKeyReaderId = nullptr;
+	m_TakeKey = false;
+	m_GotKey = false;
+	m_ModifierCombination = CBinds::MODIFIER_NONE;
+}
 
 bool CKeyBinder::OnInput(const IInput::CEvent &Event)
 {
@@ -18,79 +24,70 @@ bool CKeyBinder::OnInput(const IInput::CEvent &Event)
 		return false;
 	}
 
-	if(Event.m_Flags & IInput::FLAG_RELEASE)
+	int TriggeringEvent = (Event.m_Key == KEY_MOUSE_1) ? IInput::FLAG_PRESS : IInput::FLAG_RELEASE;
+	if(Event.m_Flags & TriggeringEvent)
 	{
-		int ModifierCombination = CBinds::GetModifierMask(Input());
-		if(ModifierCombination == CBinds::GetModifierMaskOfKey(Event.m_Key))
-		{
-			ModifierCombination = KeyModifier::NONE;
-		}
-		m_Key = {Event.m_Key, ModifierCombination};
+		m_Key = Event;
+		m_GotKey = true;
 		m_TakeKey = false;
+
+		m_ModifierCombination = CBinds::GetModifierMask(Input());
+		if(m_ModifierCombination == CBinds::GetModifierMaskOfKey(Event.m_Key))
+		{
+			m_ModifierCombination = CBinds::MODIFIER_NONE;
+		}
 	}
 	return true;
 }
 
-CKeyBinder::CKeyReaderResult CKeyBinder::DoKeyReader(CButtonContainer *pReaderButton, CButtonContainer *pClearButton, const CUIRect *pRect, const CBindSlot &CurrentBind, bool Activate)
+int CKeyBinder::DoKeyReader(const void *pId, const CUIRect *pRect, int Key, int ModifierCombination, int *pNewModifierCombination)
 {
-	CKeyReaderResult Result = {CurrentBind, false};
+	int NewKey = Key;
+	*pNewModifierCombination = ModifierCombination;
 
-	CUIRect KeyReaderButton, ClearButton;
-	pRect->VSplitRight(pRect->h, &KeyReaderButton, &ClearButton);
-
-	const int ClearButtonResult = Ui()->DoButton_FontIcon(
-		pClearButton, FONT_ICON_TRASH,
-		Result.m_Bind == CBindSlot(KEY_UNKNOWN, KeyModifier::NONE) ? 1 : 0,
-		&ClearButton, BUTTONFLAG_LEFT, IGraphics::CORNER_R);
-
-	const int ButtonResult = Ui()->DoButtonLogic(pReaderButton, 0, &KeyReaderButton, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
-	if(ButtonResult == 1 || Activate)
+	const int ButtonResult = Ui()->DoButtonLogic(pId, 0, pRect, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
+	if(ButtonResult == 1)
 	{
-		m_pKeyReaderId = pReaderButton;
+		m_pKeyReaderId = pId;
 		m_TakeKey = true;
-		m_Key = std::nullopt;
+		m_GotKey = false;
 	}
-	else if(ButtonResult == 2 || ClearButtonResult != 0)
+	else if(ButtonResult == 2)
 	{
-		Result.m_Bind = CBindSlot(KEY_UNKNOWN, KeyModifier::NONE);
+		NewKey = 0;
+		*pNewModifierCombination = CBinds::MODIFIER_NONE;
 	}
 
-	if(m_pKeyReaderId == pReaderButton && m_Key.has_value())
+	if(m_pKeyReaderId == pId && m_GotKey)
 	{
-		if(m_Key.value().m_Key == KEY_ESCAPE)
+		// abort with escape key
+		if(m_Key.m_Key != KEY_ESCAPE)
 		{
-			Result.m_Aborted = true;
-		}
-		else
-		{
-			Result.m_Bind = m_Key.value();
+			NewKey = m_Key.m_Key;
+			*pNewModifierCombination = m_ModifierCombination;
 		}
 		m_pKeyReaderId = nullptr;
-		m_Key = std::nullopt;
+		m_GotKey = false;
 		Ui()->SetActiveItem(nullptr);
 	}
 
 	char aBuf[64];
-	if(m_pKeyReaderId == pReaderButton && m_TakeKey)
-	{
+	if(m_pKeyReaderId == pId && m_TakeKey)
 		str_copy(aBuf, Localize("Press a key…"));
-	}
-	else if(Result.m_Bind.m_Key == KEY_UNKNOWN)
-	{
+	else if(NewKey == 0)
 		aBuf[0] = '\0';
-	}
 	else
 	{
-		GameClient()->m_Binds.GetKeyBindName(Result.m_Bind.m_Key, Result.m_Bind.m_ModifierMask, aBuf, sizeof(aBuf));
+		GameClient()->m_Binds.GetKeyBindName(NewKey, *pNewModifierCombination, aBuf, sizeof(aBuf));
 	}
 
-	const ColorRGBA Color = m_pKeyReaderId == pReaderButton && m_TakeKey ? ColorRGBA(0.0f, 1.0f, 0.0f, 0.4f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * Ui()->ButtonColorMul(pReaderButton));
-	KeyReaderButton.Draw(Color, IGraphics::CORNER_L, 5.0f);
-	CUIRect Label;
-	KeyReaderButton.HMargin(1.0f, &Label);
-	Ui()->DoLabel(&Label, aBuf, Label.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
+	const ColorRGBA Color = m_pKeyReaderId == pId && m_TakeKey ? ColorRGBA(0.0f, 1.0f, 0.0f, 0.4f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.5f * Ui()->ButtonColorMul(pId));
+	pRect->Draw(Color, IGraphics::CORNER_ALL, 5.0f);
+	CUIRect Temp;
+	pRect->HMargin(1.0f, &Temp);
+	Ui()->DoLabel(&Temp, aBuf, Temp.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
 
-	return Result;
+	return NewKey;
 }
 
 bool CKeyBinder::IsActive() const

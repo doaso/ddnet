@@ -25,8 +25,8 @@ CGun::CGun(CGameWorld *pGameWorld, vec2 Pos, bool Freeze, bool Explosive, int La
 	m_Number = Number;
 	m_EvalTick = Server()->Tick();
 
-	std::fill(std::begin(m_aLastFireTeam), std::end(m_aLastFireTeam), 0);
-	std::fill(std::begin(m_aLastFireSolo), std::end(m_aLastFireSolo), 0);
+	mem_zero(m_aLastFireTeam, sizeof(m_aLastFireTeam));
+	mem_zero(m_aLastFireSolo, sizeof(m_aLastFireSolo));
 	GameWorld()->InsertEntity(this);
 }
 
@@ -48,7 +48,7 @@ void CGun::Fire()
 {
 	// Create a list of players who are in the range of the turret
 	CEntity *apPlayersInRange[MAX_CLIENTS];
-	std::fill(std::begin(apPlayersInRange), std::end(apPlayersInRange), nullptr);
+	mem_zero(apPlayersInRange, sizeof(apPlayersInRange));
 
 	int NumPlayersInRange = GameServer()->m_World.FindEntities(m_Pos, g_Config.m_SvPlasmaRange,
 		apPlayersInRange, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
@@ -57,9 +57,12 @@ void CGun::Fire()
 	int aTargetIdInTeam[MAX_CLIENTS];
 	bool aIsTarget[MAX_CLIENTS];
 	int aMinDistInTeam[MAX_CLIENTS];
-	std::fill(std::begin(aMinDistInTeam), std::end(aMinDistInTeam), 0);
-	std::fill(std::begin(aIsTarget), std::end(aIsTarget), false);
-	std::fill(std::begin(aTargetIdInTeam), std::end(aTargetIdInTeam), -1);
+	mem_zero(aMinDistInTeam, sizeof(aMinDistInTeam));
+	mem_zero(aIsTarget, sizeof(aIsTarget));
+	for(int &TargetId : aTargetIdInTeam)
+	{
+		TargetId = -1;
+	}
 
 	for(int i = 0; i < NumPlayersInRange; i++)
 	{

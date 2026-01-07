@@ -2,7 +2,6 @@
 #include <base/log.h>
 #include <base/system.h>
 #include <base/types.h>
-#include <base/windows.h>
 
 #include <cerrno>
 #include <cstring>

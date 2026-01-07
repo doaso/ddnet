@@ -298,7 +298,7 @@ void CNetServer::SendMsgs(NETADDR &Addr, const CPacker **ppMsgs, int Num)
 void CNetServer::OnPreConnMsg(NETADDR &Addr, CNetPacketConstruct &Packet)
 {
 	bool IsCtrl = Packet.m_Flags & NET_PACKETFLAG_CONTROL;
-	int CtrlMsg = Packet.m_aChunkData[0];
+	int CtrlMsg = m_RecvUnpacker.m_Data.m_aChunkData[0];
 
 	if(IsCtrl && CtrlMsg == NET_CTRLMSG_CONNECT)
 	{
@@ -513,14 +513,14 @@ void CNetServer::OnTokenCtrlMsg(NETADDR &Addr, int ControlMsg, const CNetPacketC
 
 int CNetServer::OnSixupCtrlMsg(NETADDR &Addr, CNetChunk *pChunk, int ControlMsg, const CNetPacketConstruct &Packet, SECURITY_TOKEN &ResponseToken, SECURITY_TOKEN Token)
 {
-	if(Packet.m_DataSize < 1 + (int)sizeof(SECURITY_TOKEN) || ClientExists(Addr))
+	if(m_RecvUnpacker.m_Data.m_DataSize < 1 + (int)sizeof(SECURITY_TOKEN) || ClientExists(Addr))
 		return 0; // silently ignore
 
 	ResponseToken = ToSecurityToken(Packet.m_aChunkData + 1);
 
 	if(ControlMsg == protocol7::NET_CTRLMSG_TOKEN)
 	{
-		if(Packet.m_DataSize >= (int)NET_TOKENREQUEST_DATASIZE)
+		if(m_RecvUnpacker.m_Data.m_DataSize >= (int)NET_TOKENREQUEST_DATASIZE)
 		{
 			SendTokenSixup(Addr, ResponseToken);
 			return 0;
@@ -587,12 +587,13 @@ int CNetServer::Recv(CNetChunk *pChunk, SECURITY_TOKEN *pResponseToken)
 {
 	while(true)
 	{
-		// Unpack next chunk from stored packet if available
-		if(m_PacketChunkUnpacker.UnpackNextChunk(pChunk))
+		NETADDR Addr;
+
+		// check for a chunk
+		if(m_RecvUnpacker.FetchChunk(pChunk))
 			return 1;
 
 		// TODO: empty the recvinfo
-		NETADDR Addr;
 		unsigned char *pData;
 		int Bytes = net_udp_recv(m_Socket, &Addr, &pData);
 
@@ -620,24 +621,22 @@ int CNetServer::Recv(CNetChunk *pChunk, SECURITY_TOKEN *pResponseToken)
 		SECURITY_TOKEN Token;
 		int Slot = (*Flags & NET_PACKETFLAG_CONNLESS) == 0 ? GetClientSlot(Addr) : -1;
 		bool Sixup = Slot != -1 && m_aSlots[Slot].m_Connection.m_Sixup;
-		if(CNetBase::UnpackPacket(pData, Bytes, &m_RecvBuffer, Sixup, &Token, pResponseToken) == 0)
+		if(CNetBase::UnpackPacket(pData, Bytes, &m_RecvUnpacker.m_Data, Sixup, &Token, pResponseToken) == 0)
 		{
-			if(m_RecvBuffer.m_Flags & NET_PACKETFLAG_CONNLESS)
+			if(m_RecvUnpacker.m_Data.m_Flags & NET_PACKETFLAG_CONNLESS)
 			{
 				if(Sixup && Token != GetToken(Addr) && Token != GetGlobalToken())
-				{
 					continue;
-				}
 
 				pChunk->m_Flags = NETSENDFLAG_CONNLESS;
 				pChunk->m_ClientId = -1;
 				pChunk->m_Address = Addr;
-				pChunk->m_DataSize = m_RecvBuffer.m_DataSize;
-				pChunk->m_pData = m_RecvBuffer.m_aChunkData;
-				if(m_RecvBuffer.m_Flags & NET_PACKETFLAG_EXTENDED)
+				pChunk->m_DataSize = m_RecvUnpacker.m_Data.m_DataSize;
+				pChunk->m_pData = m_RecvUnpacker.m_Data.m_aChunkData;
+				if(m_RecvUnpacker.m_Data.m_Flags & NET_PACKETFLAG_EXTENDED)
 				{
 					pChunk->m_Flags |= NETSENDFLAG_EXTENDED;
-					mem_copy(pChunk->m_aExtraData, m_RecvBuffer.m_aExtraData, sizeof(pChunk->m_aExtraData));
+					mem_copy(pChunk->m_aExtraData, m_RecvUnpacker.m_Data.m_aExtraData, sizeof(pChunk->m_aExtraData));
 				}
 				return 1;
 			}
@@ -645,20 +644,14 @@ int CNetServer::Recv(CNetChunk *pChunk, SECURITY_TOKEN *pResponseToken)
 			{
 				if(Slot != -1) // connection found
 				{
-					const bool Control = (m_RecvBuffer.m_Flags & NET_PACKETFLAG_CONTROL) != 0;
-					if(Control)
-					{
-						OnConnCtrlMsg(Addr, Slot, m_RecvBuffer.m_aChunkData[0], m_RecvBuffer);
-					}
+					// control
+					if(m_RecvUnpacker.m_Data.m_Flags & NET_PACKETFLAG_CONTROL)
+						OnConnCtrlMsg(Addr, Slot, m_RecvUnpacker.m_Data.m_aChunkData[0], m_RecvUnpacker.m_Data);
 
-					if(m_aSlots[Slot].m_Connection.Feed(&m_RecvBuffer, &Addr, Token, *pResponseToken))
+					if(m_aSlots[Slot].m_Connection.Feed(&m_RecvUnpacker.m_Data, &Addr, Token, *pResponseToken))
 					{
-						if(!Control &&
-							m_RecvBuffer.m_DataSize > 0 &&
-							m_RecvBuffer.m_NumChunks > 0)
-						{
-							m_PacketChunkUnpacker.FeedPacket(Addr, m_RecvBuffer, &m_aSlots[Slot].m_Connection, Slot);
-						}
+						if(m_RecvUnpacker.m_Data.m_DataSize)
+							m_RecvUnpacker.Start(&Addr, &m_aSlots[Slot].m_Connection, Slot);
 					}
 				}
 				else // connection not found, client that wants to connect
@@ -666,18 +659,18 @@ int CNetServer::Recv(CNetChunk *pChunk, SECURITY_TOKEN *pResponseToken)
 					if(Sixup)
 					{
 						// got 0.7 control msg
-						if(OnSixupCtrlMsg(Addr, pChunk, m_RecvBuffer.m_aChunkData[0], m_RecvBuffer, *pResponseToken, Token) == 1)
+						if(OnSixupCtrlMsg(Addr, pChunk, m_RecvUnpacker.m_Data.m_aChunkData[0], m_RecvUnpacker.m_Data, *pResponseToken, Token) == 1)
 							return 1;
 					}
-					else if(IsDDNetControlMsg(&m_RecvBuffer))
+					else if(IsDDNetControlMsg(&m_RecvUnpacker.m_Data))
 					{
 						// got ddnet control msg
-						OnTokenCtrlMsg(Addr, m_RecvBuffer.m_aChunkData[0], m_RecvBuffer);
+						OnTokenCtrlMsg(Addr, m_RecvUnpacker.m_Data.m_aChunkData[0], m_RecvUnpacker.m_Data);
 					}
 					else
 					{
 						// got connection-less ctrl or sys msg
-						OnPreConnMsg(Addr, m_RecvBuffer);
+						OnPreConnMsg(Addr, m_RecvUnpacker.m_Data);
 					}
 				}
 			}
@@ -705,7 +698,7 @@ int CNetServer::Send(CNetChunk *pChunk)
 		int Flags = 0;
 		dbg_assert(
 			pChunk->m_ClientId >= 0 && pChunk->m_ClientId < MaxClients(),
-			"Invalid pChunk->m_ClientId: %d",
+			"erroneous client id %d",
 			pChunk->m_ClientId);
 
 		if(pChunk->m_Flags & NETSENDFLAG_VITAL)
@@ -715,6 +708,10 @@ int CNetServer::Send(CNetChunk *pChunk)
 		{
 			if(pChunk->m_Flags & NETSENDFLAG_FLUSH)
 				m_aSlots[pChunk->m_ClientId].m_Connection.Flush();
+		}
+		else
+		{
+			//Drop(pChunk->m_ClientId, "Error sending data");
 		}
 	}
 	return 0;

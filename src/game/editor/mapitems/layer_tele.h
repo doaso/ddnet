@@ -17,7 +17,7 @@ struct STeleTileStateChange
 class CLayerTele : public CLayerTiles
 {
 public:
-	CLayerTele(CEditorMap *pMap, int w, int h);
+	CLayerTele(CEditor *pEditor, int w, int h);
 	CLayerTele(const CLayerTele &Other);
 	~CLayerTele() override;
 

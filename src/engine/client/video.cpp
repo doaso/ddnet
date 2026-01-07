@@ -49,7 +49,8 @@ static LEVEL AvLevelToLogLevel(int Level)
 	case AV_LOG_TRACE:
 		return LEVEL_TRACE;
 	default:
-		dbg_assert_failed("invalid log level: %d", Level);
+		dbg_assert(false, "invalid log level: %d", Level);
+		dbg_break();
 	}
 }
 

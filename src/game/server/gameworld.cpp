@@ -10,8 +10,6 @@
 
 #include <engine/shared/config.h>
 
-#include <game/collision.h>
-
 #include <algorithm>
 #include <utility>
 
@@ -43,12 +41,6 @@ void CGameWorld::SetGameServer(CGameContext *pGameServer)
 	m_pGameServer = pGameServer;
 	m_pConfig = m_pGameServer->Config();
 	m_pServer = m_pGameServer->Server();
-}
-
-void CGameWorld::Init(CCollision *pCollision, CTuningParams *pTuningList)
-{
-	m_Core.InitSwitchers(pCollision->m_HighestSwitchNumber);
-	m_pTuningList = pTuningList;
 }
 
 CEntity *CGameWorld::FindFirst(int Type)
@@ -390,4 +382,9 @@ void CGameWorld::ReleaseHooked(int ClientId)
 			pChr->ReleaseHook();
 		}
 	}
+}
+
+CTuningParams *CGameWorld::Tuning()
+{
+	return &m_Core.m_aTuning[0];
 }

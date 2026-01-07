@@ -26,7 +26,8 @@ static const char *IndexToSystem(int Index)
 	case 1:
 		return "stun/4";
 	}
-	dbg_assert_failed("invalid index %d", Index);
+	dbg_break();
+	return nullptr;
 }
 
 static int RetryWaitSeconds(int NumUnsuccessfulTries)

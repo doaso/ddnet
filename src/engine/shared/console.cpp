@@ -1,4 +1,3 @@
-/* (c) Magnus Auvinen. See licence.txt in the root of the distribution for more information. */
 /* If you are missing that file, acquire a complete release at teeworlds.com.                */
 
 #include "console.h"
@@ -28,7 +27,7 @@ CConsole::CResult::CResult(int ClientId) :
 	mem_zero(m_aStringStorage, sizeof(m_aStringStorage));
 	m_pArgsStart = nullptr;
 	m_pCommand = nullptr;
-	std::fill(std::begin(m_apArgs), std::end(m_apArgs), nullptr);
+	mem_zero(m_apArgs, sizeof(m_apArgs));
 }
 
 CConsole::CResult::CResult(const CResult &Other) :
@@ -66,23 +65,21 @@ int CConsole::CResult::GetInteger(unsigned Index) const
 {
 	if(Index >= m_NumArgs)
 		return 0;
-	int Out;
-	return str_toint(m_apArgs[Index], &Out) ? Out : 0;
+	return str_toint(m_apArgs[Index]);
 }
 
 float CConsole::CResult::GetFloat(unsigned Index) const
 {
 	if(Index >= m_NumArgs)
 		return 0.0f;
-	float Out;
-	return str_tofloat(m_apArgs[Index], &Out) ? Out : 0.0f;
+	return str_tofloat(m_apArgs[Index]);
 }
 
-ColorHSLA CConsole::CResult::GetColor(unsigned Index, float DarkestLighting) const
+std::optional<ColorHSLA> CConsole::CResult::GetColor(unsigned Index, float DarkestLighting) const
 {
 	if(Index >= m_NumArgs)
-		return ColorHSLA(0, 0, 0);
-	return ColorParse(m_apArgs[Index], DarkestLighting).value_or(ColorHSLA(0, 0, 0));
+		return std::nullopt;
+	return ColorParse(m_apArgs[Index], DarkestLighting);
 }
 
 void CConsole::CCommand::SetAccessLevel(EAccessLevel AccessLevel)
@@ -90,23 +87,23 @@ void CConsole::CCommand::SetAccessLevel(EAccessLevel AccessLevel)
 	m_AccessLevel = AccessLevel;
 }
 
-const IConsole::ICommandInfo *CConsole::FirstCommandInfo(int ClientId, int FlagMask) const
+const IConsole::ICommandInfo *CConsole::FirstCommandInfo(EAccessLevel AccessLevel, int FlagMask) const
 {
 	for(const CCommand *pCommand = m_pFirstCommand; pCommand; pCommand = pCommand->Next())
 	{
-		if(pCommand->m_Flags & FlagMask && CanUseCommand(ClientId, pCommand))
+		if(pCommand->m_Flags & FlagMask && pCommand->GetAccessLevel() >= AccessLevel)
 			return pCommand;
 	}
 
 	return nullptr;
 }
 
-const IConsole::ICommandInfo *CConsole::NextCommandInfo(const IConsole::ICommandInfo *pInfo, int ClientId, int FlagMask) const
+const IConsole::ICommandInfo *CConsole::NextCommandInfo(const IConsole::ICommandInfo *pInfo, EAccessLevel AccessLevel, int FlagMask) const
 {
 	const CCommand *pNext = ((CCommand *)pInfo)->Next();
 	while(pNext)
 	{
-		if(pNext->m_Flags & FlagMask && CanUseCommand(ClientId, pNext))
+		if(pNext->m_Flags & FlagMask && pNext->GetAccessLevel() >= AccessLevel)
 			break;
 		pNext = pNext->Next();
 	}
@@ -150,7 +147,8 @@ const char *CConsole::AccessLevelToString(EAccessLevel AccessLevel)
 	case EAccessLevel::USER:
 		return "all";
 	}
-	dbg_assert_failed("invalid access level: %d", (int)AccessLevel);
+	dbg_assert(false, "invalid access level: %d", (int)AccessLevel);
+	dbg_break();
 }
 
 // the maximum number of tokens occurs in a string of length CONSOLE_MAX_STR_LENGTH with tokens size 1 separated by single spaces
@@ -276,17 +274,9 @@ int CConsole::ParseArgs(CResult *pResult, const char *pFormat, bool IsColor)
 				}
 
 				// validate args
-				if(IsColor)
-				{
-					auto Color = ColorParse(pResult->GetString(pResult->NumArguments() - 1), 0.0f);
-					if(!Color.has_value())
-					{
-						Error = PARSEARGS_INVALID_COLOR;
-						break;
-					}
-				}
 				if(Command == 'i')
 				{
+					// don't validate colors here
 					if(!IsColor)
 					{
 						int Value;
@@ -406,12 +396,6 @@ void CConsole::SetUnknownCommandCallback(FUnknownCommandCallback pfnCallback, vo
 	m_pUnknownCommandUserdata = pUser;
 }
 
-void CConsole::SetCanUseCommandCallback(FCanUseCommandCallback pfnCallback, void *pUser)
-{
-	m_pfnCanUseCommandCallback = pfnCallback;
-	m_pCanUseCommandUserData = pUser;
-}
-
 void CConsole::InitChecksum(CChecksumData *pData) const
 {
 	pData->m_NumCommands = 0;
@@ -428,6 +412,11 @@ void CConsole::InitChecksum(CChecksumData *pData) const
 		}
 		pData->m_NumCommands += 1;
 	}
+}
+
+void CConsole::SetAccessLevel(EAccessLevel AccessLevel)
+{
+	m_AccessLevel = AccessLevel;
 }
 
 bool CConsole::LineIsValid(const char *pStr)
@@ -557,7 +546,7 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 					Print(OUTPUT_LEVEL_STANDARD, "console", aBuf);
 				}
 			}
-			else if(CanUseCommand(Result.m_ClientId, pCommand))
+			else if(pCommand->GetAccessLevel() >= m_AccessLevel)
 			{
 				int IsStrokeCommand = 0;
 				if(Result.m_pCommand[0] == '+')
@@ -581,13 +570,11 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 					{
 						char aBuf[CMDLINE_LENGTH + 64];
 						if(Error == PARSEARGS_INVALID_INTEGER)
-							str_format(aBuf, sizeof(aBuf), "%s is not a valid integer.", Result.GetString(Result.NumArguments() - 1));
-						else if(Error == PARSEARGS_INVALID_COLOR)
-							str_format(aBuf, sizeof(aBuf), "%s is not a valid color.", Result.GetString(Result.NumArguments() - 1));
+							str_format(aBuf, sizeof(aBuf), "%s не является допустимым целым числом", Result.GetString(Result.NumArguments() - 1));
 						else if(Error == PARSEARGS_INVALID_FLOAT)
-							str_format(aBuf, sizeof(aBuf), "%s is not a valid decimal number.", Result.GetString(Result.NumArguments() - 1));
+							str_format(aBuf, sizeof(aBuf), "%s не является допустимым десятичным числом", Result.GetString(Result.NumArguments() - 1));
 						else
-							str_format(aBuf, sizeof(aBuf), "Invalid arguments. Usage: %s %s", pCommand->m_pName, pCommand->m_pParams);
+							str_format(aBuf, sizeof(aBuf), "Недостаточно аргументов. Попробуйте: /%s %s", pCommand->m_pName, pCommand->m_pParams);
 						Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 					}
 					else if(m_StoreCommands && pCommand->m_Flags & CFGFLAG_STORE)
@@ -643,23 +630,15 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 			{
 				char aBuf[CMDLINE_LENGTH + 32];
 				if(m_FlagMask & CFGFLAG_CHAT)
-					str_format(aBuf, sizeof(aBuf), "No such command: %s. Use /cmdlist for a list of all commands.", Result.m_pCommand);
+					str_format(aBuf, sizeof(aBuf), "Команда /%s не найдена", Result.m_pCommand);
 				else
-					str_format(aBuf, sizeof(aBuf), "No such command: %s.", Result.m_pCommand);
+					str_format(aBuf, sizeof(aBuf), "Команда /%s не найдена", Result.m_pCommand);
 				Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 			}
 		}
 
 		pStr = pNextPart;
 	}
-}
-
-bool CConsole::CanUseCommand(int ClientId, const IConsole::ICommandInfo *pCommand) const
-{
-	// the fallback is needed for the client and rust tests
-	if(!m_pfnCanUseCommandCallback)
-		return true;
-	return m_pfnCanUseCommandCallback(ClientId, pCommand, m_pCanUseCommandUserData);
 }
 
 int CConsole::PossibleCommands(const char *pStr, int FlagMask, bool Temp, FPossibleCallback pfnCallback, void *pUser)
@@ -761,7 +740,7 @@ void CConsole::Con_Echo(IResult *pResult, void *pUserData)
 
 void CConsole::Con_Exec(IResult *pResult, void *pUserData)
 {
-	((CConsole *)pUserData)->ExecuteFile(pResult->GetString(0), pResult->m_ClientId, true, IStorage::TYPE_ALL);
+	((CConsole *)pUserData)->ExecuteFile(pResult->GetString(0), IConsole::CLIENT_ID_UNSPECIFIED, true, IStorage::TYPE_ALL);
 }
 
 void CConsole::ConCommandAccess(IResult *pResult, void *pUser)
@@ -863,6 +842,7 @@ void CConsole::TraverseChain(FCommandCallback *ppfnCallback, void **ppUserData)
 CConsole::CConsole(int FlagMask)
 {
 	m_FlagMask = FlagMask;
+	m_AccessLevel = EAccessLevel::ADMIN;
 	m_pRecycleList = nullptr;
 	m_TempCommands.Reset();
 	m_StoreCommands = true;

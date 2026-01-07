@@ -57,8 +57,6 @@ public:
 	void SetSolo(bool Solo);
 	void SetSuper(bool Super);
 	void SetInvincible(bool Invincible);
-	void SetCollisionDisabled(bool CollisionDisabled);
-	void SetHookHitDisabled(bool HookHitDisabled);
 	void SetLiveFrozen(bool Active);
 	void SetDeepFrozen(bool Active);
 	void HandleWeaponSwitch();
@@ -121,7 +119,7 @@ private:
 	int m_NeededFaketuning;
 
 	// weapon info
-	int m_aHitObjects[MAX_CLIENTS];
+	CEntity *m_apHitObjects[10];
 	int m_NumObjectsHit;
 
 	int m_LastWeapon;
@@ -139,6 +137,7 @@ private:
 
 	// last tick that the player took any action ie some input
 	int m_LastAction;
+	int m_LastNoAmmoSound;
 
 	// these are non-heldback inputs
 	CNetObj_PlayerInput m_LatestPrevPrevInput;
@@ -268,15 +267,10 @@ public:
 	bool LaserHitDisabled() const { return m_Core.m_LaserHitDisabled; }
 	bool GrenadeHitDisabled() const { return m_Core.m_GrenadeHitDisabled; }
 
-	void SetHammerHitDisabled(bool HammerHitDisabled) { m_Core.m_HammerHitDisabled = HammerHitDisabled; }
-	void SetShotgunHitDisabled(bool ShotgunHitDisabled) { m_Core.m_ShotgunHitDisabled = ShotgunHitDisabled; }
-	void SetGrenadeHitDisabled(bool GrenadeHitDisabled) { m_Core.m_GrenadeHitDisabled = GrenadeHitDisabled; }
-	void SetLaserHitDisabled(bool LaserHitDisabled) { m_Core.m_LaserHitDisabled = LaserHitDisabled; }
-
 	bool IsSuper() const { return m_Core.m_Super; }
 
 	CSaveTee &GetLastRescueTeeRef(int Mode = RESCUEMODE_AUTO) { return m_RescueTee[Mode]; }
-	CTuningParams *GetTuning(int Zone) { return &TuningList()[Zone]; }
+	CTuningParams *GetTuning(int Zone) { return Zone ? &TuningList()[Zone] : Tuning(); }
 };
 
 #endif

@@ -1,15 +1,12 @@
 #include "image.h"
 #include "sound.h"
 
-#include <base/log.h>
-
 #include <engine/client.h>
-#include <engine/engine.h>
+#include <engine/console.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
-#include <engine/shared/config.h>
+#include <engine/serverbrowser.h>
 #include <engine/shared/datafile.h>
-#include <engine/shared/filecollection.h>
 #include <engine/sound.h>
 #include <engine/storage.h>
 
@@ -43,12 +40,14 @@ CDataFileWriterFinishJob::CDataFileWriterFinishJob(const char *pRealFilename, co
 	str_copy(m_aTempFilename, pTempFilename);
 }
 
-bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
+bool CEditorMap::Save(const char *pFilename, const std::function<void(const char *pErrorMessage)> &ErrorHandler)
 {
 	char aFilenameTmp[IO_MAX_PATH_LENGTH];
 	IStorage::FormatTmpPath(aFilenameTmp, sizeof(aFilenameTmp), pFilename);
 
-	log_info("editor/save", "Saving map to '%s'...", aFilenameTmp);
+	char aBuf[IO_MAX_PATH_LENGTH + 64];
+	str_format(aBuf, sizeof(aBuf), "saving to '%s'...", aFilenameTmp);
+	m_pEditor->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "editor", aBuf);
 
 	if(!PerformPreSaveSanityChecks(ErrorHandler))
 	{
@@ -58,7 +57,6 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 	CDataFileWriter Writer;
 	if(!Writer.Open(m_pEditor->Storage(), aFilenameTmp))
 	{
-		char aBuf[IO_MAX_PATH_LENGTH + 64];
 		str_format(aBuf, sizeof(aBuf), "Error: Failed to open file '%s' for writing.", aFilenameTmp);
 		ErrorHandler(aBuf);
 		return false;
@@ -154,8 +152,6 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 	int AutomapperCount = 0;
 	for(const auto &pGroup : m_vpGroups)
 	{
-		log_trace("editor/save", "Saving group");
-
 		CMapItemGroup GItem;
 		GItem.m_Version = 3;
 
@@ -178,7 +174,7 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 		{
 			if(pLayer->m_Type == LAYERTYPE_TILES)
 			{
-				log_trace("editor/save", "Saving tiles layer");
+				m_pEditor->Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "editor", "saving tiles layer");
 				std::shared_ptr<CLayerTiles> pLayerTiles = std::static_pointer_cast<CLayerTiles>(pLayer);
 				pLayerTiles->PrepareForSave();
 
@@ -265,7 +261,7 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 			}
 			else if(pLayer->m_Type == LAYERTYPE_QUADS)
 			{
-				log_trace("editor/save", "Saving quads layer");
+				m_pEditor->Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "editor", "saving quads layer");
 				std::shared_ptr<CLayerQuads> pLayerQuads = std::static_pointer_cast<CLayerQuads>(pLayer);
 				CMapItemLayerQuads Item;
 				Item.m_Version = 2;
@@ -298,7 +294,7 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 			}
 			else if(pLayer->m_Type == LAYERTYPE_SOUNDS)
 			{
-				log_trace("editor/save", "Saving sounds layer");
+				m_pEditor->Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "editor", "saving sounds layer");
 				std::shared_ptr<CLayerSounds> pLayerSounds = std::static_pointer_cast<CLayerSounds>(pLayer);
 				CMapItemLayerSounds Item;
 				Item.m_Version = 2;
@@ -338,7 +334,7 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 	}
 
 	// save envelopes
-	log_trace("editor/save", "Saving envelopes");
+	m_pEditor->Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "editor", "saving envelopes");
 	int PointCount = 0;
 	for(size_t e = 0; e < m_vpEnvelopes.size(); e++)
 	{
@@ -355,7 +351,7 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 	}
 
 	// save points
-	log_trace("editor/save", "Saving envelope points");
+	m_pEditor->Console()->Print(IConsole::OUTPUT_LEVEL_ADDINFO, "editor", "saving envelope points");
 	bool BezierUsed = false;
 	for(const auto &pEnvelope : m_vpEnvelopes)
 	{
@@ -418,7 +414,7 @@ bool CEditorMap::Save(const char *pFilename, const FErrorHandler &ErrorHandler)
 	return true;
 }
 
-bool CEditorMap::PerformPreSaveSanityChecks(const FErrorHandler &ErrorHandler)
+bool CEditorMap::PerformPreSaveSanityChecks(const std::function<void(const char *pErrorMessage)> &ErrorHandler)
 {
 	bool Success = true;
 	char aErrorMessage[256];
@@ -446,7 +442,7 @@ bool CEditorMap::PerformPreSaveSanityChecks(const FErrorHandler &ErrorHandler)
 	return Success;
 }
 
-bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandler &ErrorHandler)
+bool CEditorMap::Load(const char *pFilename, int StorageType, const std::function<void(const char *pErrorMessage)> &ErrorHandler)
 {
 	CDataFileReader DataFile;
 	if(!DataFile.Open(m_pEditor->Storage(), pFilename, StorageType))
@@ -524,7 +520,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 			CMapItemImage_v2 *pItem = (CMapItemImage_v2 *)DataFile.GetItem(Start + i);
 
 			// copy base info
-			std::shared_ptr<CEditorImage> pImg = std::make_shared<CEditorImage>(this);
+			std::shared_ptr<CEditorImage> pImg = std::make_shared<CEditorImage>(m_pEditor);
 			pImg->m_External = pItem->m_External;
 
 			const char *pName = DataFile.GetDataString(pItem->m_ImageName);
@@ -608,7 +604,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 			CMapItemSound *pItem = (CMapItemSound *)DataFile.GetItem(Start + i);
 
 			// copy base info
-			std::shared_ptr<CEditorSound> pSound = std::make_shared<CEditorSound>(this);
+			std::shared_ptr<CEditorSound> pSound = std::make_shared<CEditorSound>(m_pEditor);
 
 			const char *pName = DataFile.GetDataString(pItem->m_SoundName);
 			if(pName == nullptr || pName[0] == '\0')
@@ -700,7 +696,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 					std::shared_ptr<CLayerTiles> pTiles;
 					if(pTilemapItem->m_Flags & TILESLAYERFLAG_GAME)
 					{
-						pTiles = std::make_shared<CLayerGame>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerGame>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
 						MakeGameLayer(pTiles);
 						MakeGameGroup(pGroup);
 					}
@@ -709,7 +705,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 						if(pTilemapItem->m_Version <= 2)
 							pTilemapItem->m_Tele = *((const int *)(pTilemapItem) + 15);
 
-						pTiles = std::make_shared<CLayerTele>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerTele>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
 						MakeTeleLayer(pTiles);
 					}
 					else if(pTilemapItem->m_Flags & TILESLAYERFLAG_SPEEDUP)
@@ -717,7 +713,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 						if(pTilemapItem->m_Version <= 2)
 							pTilemapItem->m_Speedup = *((const int *)(pTilemapItem) + 16);
 
-						pTiles = std::make_shared<CLayerSpeedup>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerSpeedup>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
 						MakeSpeedupLayer(pTiles);
 					}
 					else if(pTilemapItem->m_Flags & TILESLAYERFLAG_FRONT)
@@ -725,7 +721,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 						if(pTilemapItem->m_Version <= 2)
 							pTilemapItem->m_Front = *((const int *)(pTilemapItem) + 17);
 
-						pTiles = std::make_shared<CLayerFront>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerFront>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
 						MakeFrontLayer(pTiles);
 					}
 					else if(pTilemapItem->m_Flags & TILESLAYERFLAG_SWITCH)
@@ -733,7 +729,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 						if(pTilemapItem->m_Version <= 2)
 							pTilemapItem->m_Switch = *((const int *)(pTilemapItem) + 18);
 
-						pTiles = std::make_shared<CLayerSwitch>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerSwitch>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
 						MakeSwitchLayer(pTiles);
 					}
 					else if(pTilemapItem->m_Flags & TILESLAYERFLAG_TUNE)
@@ -741,12 +737,13 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 						if(pTilemapItem->m_Version <= 2)
 							pTilemapItem->m_Tune = *((const int *)(pTilemapItem) + 19);
 
-						pTiles = std::make_shared<CLayerTune>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerTune>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
 						MakeTuneLayer(pTiles);
 					}
 					else
 					{
-						pTiles = std::make_shared<CLayerTiles>(this, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles = std::make_shared<CLayerTiles>(m_pEditor, pTilemapItem->m_Width, pTilemapItem->m_Height);
+						pTiles->m_pEditor = m_pEditor;
 						pTiles->m_Color = pTilemapItem->m_Color;
 						pTiles->m_ColorEnv = pTilemapItem->m_ColorEnv;
 						pTiles->m_ColorEnvOffset = pTilemapItem->m_ColorEnvOffset;
@@ -875,7 +872,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 				{
 					const CMapItemLayerQuads *pQuadsItem = (CMapItemLayerQuads *)pLayerItem;
 
-					std::shared_ptr<CLayerQuads> pQuads = std::make_shared<CLayerQuads>(this);
+					std::shared_ptr<CLayerQuads> pQuads = std::make_shared<CLayerQuads>(m_pEditor);
 					pQuads->m_Flags = pLayerItem->m_Flags;
 					pQuads->m_Image = pQuadsItem->m_Image;
 
@@ -905,7 +902,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 					if(pSoundsItem->m_Version < 1 || pSoundsItem->m_Version > 2)
 						continue;
 
-					std::shared_ptr<CLayerSounds> pSounds = std::make_shared<CLayerSounds>(this);
+					std::shared_ptr<CLayerSounds> pSounds = std::make_shared<CLayerSounds>(m_pEditor);
 					pSounds->m_Flags = pLayerItem->m_Flags;
 					pSounds->m_Sound = pSoundsItem->m_Sound;
 
@@ -936,7 +933,7 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 					if(pSoundsItem->m_Version < 1 || pSoundsItem->m_Version > 2)
 						continue;
 
-					std::shared_ptr<CLayerSounds> pSounds = std::make_shared<CLayerSounds>(this);
+					std::shared_ptr<CLayerSounds> pSounds = std::make_shared<CLayerSounds>(m_pEditor);
 					pSounds->m_Flags = pLayerItem->m_Flags;
 					pSounds->m_Sound = pSoundsItem->m_Sound;
 
@@ -984,11 +981,11 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 	{
 		const CMapBasedEnvelopePointAccess EnvelopePoints(&DataFile);
 
-		int EnvelopeStart, EnvelopeNum;
-		DataFile.GetType(MAPITEMTYPE_ENVELOPE, &EnvelopeStart, &EnvelopeNum);
-		for(int EnvelopeIndex = 0; EnvelopeIndex < EnvelopeNum; EnvelopeIndex++)
+		int EnvStart, EnvNum;
+		DataFile.GetType(MAPITEMTYPE_ENVELOPE, &EnvStart, &EnvNum);
+		for(int e = 0; e < EnvNum; e++)
 		{
-			CMapItemEnvelope *pItem = (CMapItemEnvelope *)DataFile.GetItem(EnvelopeStart + EnvelopeIndex);
+			CMapItemEnvelope *pItem = (CMapItemEnvelope *)DataFile.GetItem(EnvStart + e);
 			int Channels = pItem->m_Channels;
 			if(Channels <= 0 || Channels == 2 || Channels > CEnvPoint::MAX_CHANNELS)
 			{
@@ -998,26 +995,26 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 			if(Channels != pItem->m_Channels)
 			{
 				char aBuf[128];
-				str_format(aBuf, sizeof(aBuf), "Error: Envelope %d had an invalid number of channels, %d, which was changed to %d.", EnvelopeIndex, pItem->m_Channels, Channels);
+				str_format(aBuf, sizeof(aBuf), "Error: Envelope %d had an invalid number of channels, %d, which was changed to %d.", e, pItem->m_Channels, Channels);
 				ErrorHandler(aBuf);
 			}
 
-			std::shared_ptr<CEnvelope> pEnvelope = std::make_shared<CEnvelope>(Channels);
-			pEnvelope->m_vPoints.resize(pItem->m_NumPoints);
-			for(int PointIndex = 0; PointIndex < pItem->m_NumPoints; PointIndex++)
+			std::shared_ptr<CEnvelope> pEnv = std::make_shared<CEnvelope>(Channels);
+			pEnv->m_vPoints.resize(pItem->m_NumPoints);
+			for(int p = 0; p < pItem->m_NumPoints; p++)
 			{
-				const CEnvPoint *pPoint = EnvelopePoints.GetPoint(pItem->m_StartPoint + PointIndex);
+				const CEnvPoint *pPoint = EnvelopePoints.GetPoint(pItem->m_StartPoint + p);
 				if(pPoint != nullptr)
-					mem_copy(&pEnvelope->m_vPoints[PointIndex], pPoint, sizeof(CEnvPoint));
-				const CEnvPointBezier *pPointBezier = EnvelopePoints.GetBezier(pItem->m_StartPoint + PointIndex);
+					mem_copy(&pEnv->m_vPoints[p], pPoint, sizeof(CEnvPoint));
+				const CEnvPointBezier *pPointBezier = EnvelopePoints.GetBezier(pItem->m_StartPoint + p);
 				if(pPointBezier != nullptr)
-					mem_copy(&pEnvelope->m_vPoints[PointIndex].m_Bezier, pPointBezier, sizeof(CEnvPointBezier));
+					mem_copy(&pEnv->m_vPoints[p].m_Bezier, pPointBezier, sizeof(CEnvPointBezier));
 			}
 			if(pItem->m_aName[0] != -1) // compatibility with old maps
-				IntsToStr(pItem->m_aName, std::size(pItem->m_aName), pEnvelope->m_aName, std::size(pEnvelope->m_aName));
-			m_vpEnvelopes.push_back(pEnvelope);
+				IntsToStr(pItem->m_aName, std::size(pItem->m_aName), pEnv->m_aName, std::size(pEnv->m_aName));
+			m_vpEnvelopes.push_back(pEnv);
 			if(pItem->m_Version >= 2)
-				pEnvelope->m_Synchronized = pItem->m_Synchronized;
+				pEnv->m_Synchronized = pItem->m_Synchronized;
 		}
 	}
 
@@ -1051,16 +1048,13 @@ bool CEditorMap::Load(const char *pFilename, int StorageType, const FErrorHandle
 		}
 	}
 
-	str_copy(m_aFilename, pFilename);
-
-	CheckIntegrity();
 	PerformSanityChecks(ErrorHandler);
 
 	ResetModifiedState();
 	return true;
 }
 
-void CEditorMap::PerformSanityChecks(const FErrorHandler &ErrorHandler)
+void CEditorMap::PerformSanityChecks(const std::function<void(const char *pErrorMessage)> &ErrorHandler)
 {
 	// Check if there are any images with a width or height that is not divisible by 16 which are
 	// used in tile layers. Reset the image for these layers, to prevent crashes with some drivers.
@@ -1092,43 +1086,5 @@ void CEditorMap::PerformSanityChecks(const FErrorHandler &ErrorHandler)
 			}
 		}
 		++ImageIndex;
-	}
-}
-
-bool CEditorMap::PerformAutosave(const std::function<void(const char *pErrorMessage)> &ErrorHandler)
-{
-	char aDate[20];
-	char aAutosavePath[IO_MAX_PATH_LENGTH];
-	str_timestamp(aDate, sizeof(aDate));
-	char aFilenameNoExt[IO_MAX_PATH_LENGTH];
-	if(m_aFilename[0] == '\0')
-	{
-		str_copy(aFilenameNoExt, "unnamed");
-	}
-	else
-	{
-		const char *pFilename = fs_filename(m_aFilename);
-		str_truncate(aFilenameNoExt, sizeof(aFilenameNoExt), pFilename, str_length(pFilename) - str_length(".map"));
-	}
-	str_format(aAutosavePath, sizeof(aAutosavePath), "maps/auto/%s_%s.map", aFilenameNoExt, aDate);
-
-	m_LastSaveTime = Editor()->Client()->GlobalTime();
-	if(Save(aAutosavePath, ErrorHandler))
-	{
-		m_ModifiedAuto = false;
-		// Clean up autosaves
-		if(g_Config.m_EdAutosaveMax)
-		{
-			CFileCollection AutosavedMaps;
-			AutosavedMaps.Init(Editor()->Storage(), "maps/auto", aFilenameNoExt, ".map", g_Config.m_EdAutosaveMax);
-		}
-		return true;
-	}
-	else
-	{
-		char aErrorMessage[IO_MAX_PATH_LENGTH + 128];
-		str_format(aErrorMessage, sizeof(aErrorMessage), "Failed to automatically save map to file '%s'.", aAutosavePath);
-		ErrorHandler(aErrorMessage);
-		return false;
 	}
 }

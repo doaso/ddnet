@@ -234,7 +234,6 @@ public:
 	void OnShutdown() override;
 	void OnUpdate() override;
 
-	void RefreshEventSkins();
 	void Refresh(TSkinLoadedCallback &&SkinLoadedCallback);
 	CSkinLoadingStats LoadingStats() const;
 	CSkinList &SkinList();

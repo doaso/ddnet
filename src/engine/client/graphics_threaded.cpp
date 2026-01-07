@@ -6,6 +6,7 @@
 #include <base/math.h>
 #include <base/system.h>
 
+#include <engine/console.h>
 #include <engine/engine.h>
 #include <engine/gfx/image_loader.h>
 #include <engine/gfx/image_manipulation.h>
@@ -426,7 +427,7 @@ IGraphics::CTextureHandle CGraphics_Threaded::LoadTextureRaw(const CImageInfo &I
 	uint8_t *pTmpData;
 	if(!ConvertToRgbaAlloc(pTmpData, Image))
 	{
-		log_warn("graphics", "Converted image '%s' to RGBA, consider making its file format RGBA.", pTexName ? pTexName : "(no name)");
+		dbg_msg("graphics", "converted image '%s' to RGBA, consider making its file format RGBA", pTexName ? pTexName : "(no name)");
 	}
 	Cmd.m_pData = pTmpData;
 
@@ -471,7 +472,7 @@ IGraphics::CTextureHandle CGraphics_Threaded::LoadTexture(const char *pFilename,
 		if(Id.IsValid())
 		{
 			if(g_Config.m_Debug)
-				log_trace("graphics/texture", "Loaded texture '%s'", pFilename);
+				dbg_msg("graphics/texture", "loaded %s", pFilename);
 			return Id;
 		}
 	}
@@ -671,26 +672,29 @@ void CGraphics_Threaded::KickCommandBuffer()
 class CScreenshotSaveJob : public IJob
 {
 	IStorage *m_pStorage;
+	IConsole *m_pConsole;
 	char m_aName[IO_MAX_PATH_LENGTH];
 	CImageInfo m_Image;
 
 	void Run() override
 	{
-		static constexpr LOG_COLOR SCREENSHOT_LOG_COLOR = LOG_COLOR{255, 153, 76};
 		char aWholePath[IO_MAX_PATH_LENGTH];
+		char aBuf[64 + IO_MAX_PATH_LENGTH];
 		if(CImageLoader::SavePng(m_pStorage->OpenFile(m_aName, IOFLAG_WRITE, IStorage::TYPE_SAVE, aWholePath, sizeof(aWholePath)), m_aName, m_Image))
 		{
-			log_info_color(SCREENSHOT_LOG_COLOR, "client", "Saved screenshot to '%s'", aWholePath);
+			str_format(aBuf, sizeof(aBuf), "saved screenshot to '%s'", aWholePath);
 		}
 		else
 		{
-			log_error_color(SCREENSHOT_LOG_COLOR, "client", "Failed to save screenshot to '%s'", aWholePath);
+			str_format(aBuf, sizeof(aBuf), "failed to save screenshot to '%s'", aWholePath);
 		}
+		m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "client", aBuf, ColorRGBA(1.0f, 0.6f, 0.3f, 1.0f));
 	}
 
 public:
-	CScreenshotSaveJob(IStorage *pStorage, const char *pName, CImageInfo &&Image) :
+	CScreenshotSaveJob(IStorage *pStorage, IConsole *pConsole, const char *pName, CImageInfo &&Image) :
 		m_pStorage(pStorage),
+		m_pConsole(pConsole),
 		m_Image(std::move(Image))
 	{
 		str_copy(m_aName, pName);
@@ -722,7 +726,7 @@ void CGraphics_Threaded::ScreenshotDirect(bool *pSwapped)
 
 	if(Image.m_pData)
 	{
-		m_pEngine->AddJob(std::make_shared<CScreenshotSaveJob>(m_pStorage, m_aScreenshotName, std::move(Image)));
+		m_pEngine->AddJob(std::make_shared<CScreenshotSaveJob>(m_pStorage, m_pConsole, m_aScreenshotName, std::move(Image)));
 	}
 }
 
@@ -836,7 +840,10 @@ void CGraphics_Threaded::SetColor(float r, float g, float b, float a)
 	NewColor.g = NormalizeColorComponent(g);
 	NewColor.b = NormalizeColorComponent(b);
 	NewColor.a = NormalizeColorComponent(a);
-	std::fill(std::begin(m_aColor), std::end(m_aColor), NewColor);
+	for(CCommandBuffer::SColor &Color : m_aColor)
+	{
+		Color = NewColor;
+	}
 }
 
 void CGraphics_Threaded::SetColor(ColorRGBA Color)
@@ -1374,7 +1381,7 @@ void CGraphics_Threaded::RenderTileLayer(int BufferContainerIndex, const ColorRG
 		pData = m_pCommandBuffer->AllocData((sizeof(char *) + sizeof(unsigned int)) * NumIndicesOffset);
 		if(pData == nullptr)
 		{
-			log_error("graphics", "Failed to allocate data for tile layer vertices. NumIndicesOffset=%" PRIzu, NumIndicesOffset);
+			dbg_msg("graphics", "failed to allocate data for vertices");
 			return;
 		}
 	}
@@ -1893,7 +1900,7 @@ void CGraphics_Threaded::RenderQuadContainerAsSpriteMultiple(int ContainerIndex,
 			Cmd.m_pRenderInfo = (IGraphics::SRenderSpriteInfo *)m_pCommandBuffer->AllocData(sizeof(IGraphics::SRenderSpriteInfo) * DrawCount);
 			if(Cmd.m_pRenderInfo == nullptr)
 			{
-				log_error("graphics", "Failed to allocate data for quad container render info. DrawCount=%d", DrawCount);
+				dbg_msg("graphics", "failed to allocate data for render info");
 				return;
 			}
 		}
@@ -2187,37 +2194,25 @@ void CGraphics_Threaded::IndicesNumRequiredNotify(unsigned int RequiredIndicesCo
 
 int CGraphics_Threaded::IssueInit()
 {
-	// The flags have to be kept consistent with flags set in the CGraphicsBackend_SDL_GL::SetWindowParams function!
-
 	bool IsPurelyWindowed = g_Config.m_GfxFullscreen == 0;
 	bool IsExclusiveFullscreen = g_Config.m_GfxFullscreen == 1;
 	bool IsDesktopFullscreen = g_Config.m_GfxFullscreen == 2;
 #ifndef CONF_FAMILY_WINDOWS
-	//  Windowed fullscreen is only available on Windows, use desktop fullscreen on other platforms
+	//  special mode for windows only
 	IsDesktopFullscreen |= g_Config.m_GfxFullscreen == 3;
 #endif
 
 	int Flags = 0;
+	if(g_Config.m_GfxBorderless)
+		Flags |= IGraphicsBackend::INITFLAG_BORDERLESS;
 	if(IsExclusiveFullscreen)
-	{
 		Flags |= IGraphicsBackend::INITFLAG_FULLSCREEN;
-	}
 	else if(IsDesktopFullscreen)
-	{
 		Flags |= IGraphicsBackend::INITFLAG_DESKTOP_FULLSCREEN;
-	}
-	else if(IsPurelyWindowed)
-	{
+	if(IsPurelyWindowed)
 		Flags |= IGraphicsBackend::INITFLAG_RESIZABLE;
-		if(g_Config.m_GfxBorderless)
-		{
-			Flags |= IGraphicsBackend::INITFLAG_BORDERLESS;
-		}
-	}
 	if(g_Config.m_GfxVsync)
-	{
 		Flags |= IGraphicsBackend::INITFLAG_VSYNC;
-	}
 
 	const int Result = m_pBackend->Init("DDNet Client", &g_Config.m_GfxScreen, &g_Config.m_GfxScreenWidth, &g_Config.m_GfxScreenHeight, &g_Config.m_GfxScreenRefreshRate, &g_Config.m_GfxFsaaSamples, Flags, &g_Config.m_GfxDesktopWidth, &g_Config.m_GfxDesktopHeight, &m_ScreenWidth, &m_ScreenHeight, m_pStorage);
 	AddBackEndWarningIfExists();
@@ -2287,17 +2282,16 @@ int CGraphics_Threaded::InitWindow()
 	// try disabling fsaa
 	while(g_Config.m_GfxFsaaSamples)
 	{
-		// 4 is the minimum required by OpenGL ES spec (GL_MAX_SAMPLES - https://www.khronos.org/registry/OpenGL-Refpages/es3.0/html/glGet.xhtml),
-		// so can probably also be assumed for OpenGL
+		// 4 is the minimum required by OpenGL ES spec (GL_MAX_SAMPLES - https://www.khronos.org/registry/OpenGL-Refpages/es3.0/html/glGet.xhtml), so can probably also be assumed for OpenGL
 		if(g_Config.m_GfxFsaaSamples > 4)
 			g_Config.m_GfxFsaaSamples = 4;
 		else
 			g_Config.m_GfxFsaaSamples = 0;
 
 		if(g_Config.m_GfxFsaaSamples)
-			log_warn("gfx", "Failed to initialize graphics. Lowering FSAA to %d and trying again.", g_Config.m_GfxFsaaSamples);
+			dbg_msg("gfx", "lowering FSAA to %d and trying again", g_Config.m_GfxFsaaSamples);
 		else
-			log_warn("gfx", "Failed to initialize graphics. Disabling FSAA and trying again.");
+			dbg_msg("gfx", "disabling FSAA and trying again");
 
 		ErrorCode = IssueInit();
 		if(ErrorCode == 0)
@@ -2305,8 +2299,7 @@ int CGraphics_Threaded::InitWindow()
 	}
 
 	size_t GLInitTryCount = 0;
-	while(ErrorCode == EGraphicsBackendErrorCodes::GRAPHICS_BACKEND_ERROR_CODE_GL_CONTEXT_FAILED ||
-		ErrorCode == EGraphicsBackendErrorCodes::GRAPHICS_BACKEND_ERROR_CODE_GL_VERSION_FAILED)
+	while(ErrorCode == EGraphicsBackendErrorCodes::GRAPHICS_BACKEND_ERROR_CODE_GL_CONTEXT_FAILED || ErrorCode == EGraphicsBackendErrorCodes::GRAPHICS_BACKEND_ERROR_CODE_GL_VERSION_FAILED)
 	{
 		if(ErrorCode == EGraphicsBackendErrorCodes::GRAPHICS_BACKEND_ERROR_CODE_GL_CONTEXT_FAILED)
 		{
@@ -2366,7 +2359,6 @@ int CGraphics_Threaded::InitWindow()
 				g_Config.m_GfxGLPatch = 0;
 			}
 		}
-		log_warn("gfx", "Failed to initialize graphics. Setting GL version %d.%d.%d and trying again.", g_Config.m_GfxGLMajor, g_Config.m_GfxGLMinor, g_Config.m_GfxGLPatch);
 
 		// new gl version was set by backend, try again
 		ErrorCode = IssueInit();
@@ -2385,9 +2377,9 @@ int CGraphics_Threaded::InitWindow()
 	// try lowering the resolution
 	if(g_Config.m_GfxScreenWidth != 640 || g_Config.m_GfxScreenHeight != 480)
 	{
+		dbg_msg("gfx", "setting resolution to 640x480 and trying again");
 		g_Config.m_GfxScreenWidth = 640;
 		g_Config.m_GfxScreenHeight = 480;
-		log_warn("gfx", "Failed to initialize graphics. Setting resolution to %dx%d and trying again.", g_Config.m_GfxScreenWidth, g_Config.m_GfxScreenHeight);
 
 		if(IssueInit() == 0)
 			return 0;
@@ -2398,13 +2390,13 @@ int CGraphics_Threaded::InitWindow()
 		g_Config.m_GfxGLMajor = 1;
 		g_Config.m_GfxGLMinor = 4;
 		g_Config.m_GfxGLPatch = 0;
-		log_warn("gfx", "Failed to initialize graphics. Setting GL version %d.%d.%d and trying again.", g_Config.m_GfxGLMajor, g_Config.m_GfxGLMinor, g_Config.m_GfxGLPatch);
 
 		if(IssueInit() == 0)
 			return 0;
 	}
 
-	log_error("gfx", "Failed to initialize graphics. Out of ideas.");
+	dbg_msg("gfx", "out of ideas. failed to init graphics");
+
 	return -1;
 }
 
@@ -2412,6 +2404,7 @@ int CGraphics_Threaded::Init()
 {
 	// fetch pointers
 	m_pStorage = Kernel()->RequestInterface<IStorage>();
+	m_pConsole = Kernel()->RequestInterface<IConsole>();
 	m_pEngine = Kernel()->RequestInterface<IEngine>();
 
 	// init textures
@@ -2476,10 +2469,17 @@ int CGraphics_Threaded::Init()
 		dbg_assert(m_NullTexture.IsNullTexture(), "Null texture invalid");
 	}
 
-	static constexpr LOG_COLOR GPU_INFO_LOG_COLOR = LOG_COLOR{153, 127, 255};
-	log_info_color(GPU_INFO_LOG_COLOR, "gfx", "GPU vendor: %s", GetVendorString());
-	log_info_color(GPU_INFO_LOG_COLOR, "gfx", "GPU renderer: %s", GetRendererString());
-	log_info_color(GPU_INFO_LOG_COLOR, "gfx", "GPU version: %s", GetVersionString());
+	ColorRGBA GPUInfoPrintColor{0.6f, 0.5f, 1.0f, 1.0f};
+
+	char aBuf[256];
+	str_format(aBuf, sizeof(aBuf), "GPU vendor: %s", GetVendorString());
+	m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "gfx", aBuf, GPUInfoPrintColor);
+
+	str_format(aBuf, sizeof(aBuf), "GPU renderer: %s", GetRendererString());
+	m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "gfx", aBuf, GPUInfoPrintColor);
+
+	str_format(aBuf, sizeof(aBuf), "GPU version: %s", GetVersionString());
+	m_pConsole->Print(IConsole::OUTPUT_LEVEL_STANDARD, "gfx", aBuf, GPUInfoPrintColor);
 
 	AdjustViewport(true);
 
@@ -2516,6 +2516,15 @@ void CGraphics_Threaded::Minimize()
 		PropChangedListener();
 }
 
+void CGraphics_Threaded::Maximize()
+{
+	// TODO: SDL
+	m_pBackend->Maximize();
+
+	for(auto &PropChangedListener : m_vPropChangeListeners)
+		PropChangedListener();
+}
+
 void CGraphics_Threaded::WarnPngliteIncompatibleImages(bool Warn)
 {
 	m_WarnPngliteIncompatibleImages = Warn;
@@ -2535,9 +2544,9 @@ void CGraphics_Threaded::SetWindowParams(int FullscreenMode, bool IsBorderless)
 		PropChangedListener();
 }
 
-bool CGraphics_Threaded::SetWindowScreen(int Index, bool MoveToCenter)
+bool CGraphics_Threaded::SetWindowScreen(int Index)
 {
-	if(!m_pBackend->SetWindowScreen(Index, MoveToCenter))
+	if(!m_pBackend->SetWindowScreen(Index))
 	{
 		return false;
 	}
@@ -2551,37 +2560,29 @@ bool CGraphics_Threaded::SetWindowScreen(int Index, bool MoveToCenter)
 	return true;
 }
 
-bool CGraphics_Threaded::SwitchWindowScreen(int Index, bool MoveToCenter)
+bool CGraphics_Threaded::SwitchWindowScreen(int Index)
 {
 	const int IsFullscreen = g_Config.m_GfxFullscreen;
 	const int IsBorderless = g_Config.m_GfxBorderless;
-	const bool IsPurelyWindowed = IsFullscreen == 0 && !IsBorderless;
 
-	if(!SetWindowScreen(Index, !IsPurelyWindowed || MoveToCenter))
+	if(!SetWindowScreen(Index))
 	{
 		return false;
 	}
 
-	if(IsFullscreen != 3 && !IsPurelyWindowed)
-	{
-		// Prevent window from being stretched over multiple monitors by temporarily switching to
-		// windowed fullscreen mode on Windows, which is desktop fullscreen mode on other systems.
-		SetWindowParams(3, false);
-	}
+	// Prevent window from being stretched over multiple monitors by temporarily switching to
+	// windowed fullscreen mode on Windows, which is desktop fullscreen mode on other systems.
+	SetWindowParams(3, false);
 
-	// In purely windowed mode we preserve the window's size instead of resizing to the screen.
-	if(!IsPurelyWindowed)
-	{
-		CVideoMode CurMode;
-		GetCurrentVideoMode(CurMode, Index);
+	CVideoMode CurMode;
+	GetCurrentVideoMode(CurMode, Index);
 
-		g_Config.m_GfxColorDepth = CurMode.m_Red + CurMode.m_Green + CurMode.m_Blue > 16 ? 24 : 16;
-		g_Config.m_GfxScreenWidth = CurMode.m_WindowWidth;
-		g_Config.m_GfxScreenHeight = CurMode.m_WindowHeight;
-		g_Config.m_GfxScreenRefreshRate = CurMode.m_RefreshRate;
+	g_Config.m_GfxColorDepth = CurMode.m_Red + CurMode.m_Green + CurMode.m_Blue > 16 ? 24 : 16;
+	g_Config.m_GfxScreenWidth = CurMode.m_WindowWidth;
+	g_Config.m_GfxScreenHeight = CurMode.m_WindowHeight;
+	g_Config.m_GfxScreenRefreshRate = CurMode.m_RefreshRate;
 
-		ResizeToScreen();
-	}
+	ResizeToScreen();
 
 	SetWindowParams(IsFullscreen, IsBorderless);
 	return true;

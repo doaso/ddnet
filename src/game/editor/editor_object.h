@@ -5,6 +5,7 @@ class CEditor;
 class IInput;
 class IClient;
 class CConfig;
+class IConsole;
 class IEngine;
 class IGraphics;
 class ISound;
@@ -33,6 +34,8 @@ public:
 	const IClient *Client() const;
 	CConfig *Config();
 	const CConfig *Config() const;
+	IConsole *Console();
+	const IConsole *Console() const;
 	IEngine *Engine();
 	const IEngine *Engine() const;
 	IGraphics *Graphics();

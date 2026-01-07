@@ -30,7 +30,7 @@ public:
 		JOYSTICK_AIM,
 		JOYSTICK_FIRE,
 		JOYSTICK_HOOK,
-		NUM_PREDEFINEDTYPES
+		NUM_PREDEFINEDS
 	};
 
 	// Which menu is selected.
@@ -161,19 +161,15 @@ public:
 	void CacheAllSettingsFromTarget(CTouchControls::CTouchButton *pTargetButton);
 	void SaveCachedSettingsToTarget(CTouchControls::CTouchButton *pTargetButton) const;
 	void SetPosInputs(CTouchControls::CUnitRect MyRect);
-	CTouchControls::CUnitRect GetPosInputs() const;
 	void InputPosFunction(CLineInputNumber *pInput);
 	void UpdateSampleButton();
 	void ResetButtonPointers();
-	bool NewButton(CTouchControls::CUnitRect Rect, CTouchControls::EButtonShape Shape);
+	void NewVirtualButton();
 	void ResolveIssues();
 	int CalculatePredefinedType(const char *pType) const;
 	std::string DetermineTouchButtonCommandLabel(CTouchControls::CTouchButton *pButton) const;
 	const char **VisibilityNames() const;
 	const char **PredefinedNames() const;
-	const char *HelpMessageForBehaviorType(EBehaviorType Type) const;
-	const char *HelpMessageForPredefinedType(EPredefinedType Type) const;
-	const char *HelpMessageForVisibilityType(CTouchControls::EButtonVisibility Type) const;
 
 	class CBehaviorFactoryEditor
 	{

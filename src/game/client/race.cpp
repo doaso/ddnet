@@ -79,7 +79,7 @@ int CRaceHelper::TimeFromStr(const char *pStr)
 
 int CRaceHelper::TimeFromFinishMessage(const char *pStr, char *pNameBuf, int NameBufSize)
 {
-	static const char *const s_pFinishedStr = " finished in: ";
+	static const char *const s_pFinishedStr = "Пройдено за ";
 	const char *pFinished = str_find(pStr, s_pFinishedStr);
 	if(!pFinished)
 		return -1;

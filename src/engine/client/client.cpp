@@ -12,9 +12,7 @@
 #include <base/log.h>
 #include <base/logger.h>
 #include <base/math.h>
-#include <base/str.h>
 #include <base/system.h>
-#include <base/windows.h>
 
 #include <engine/config.h>
 #include <engine/console.h>
@@ -499,11 +497,12 @@ void CClient::EnterGame(int Conn)
 	m_CurrentServerNextPingTime = time_get() + time_freq() / 2;
 }
 
-void CClient::OnPostConnect(int Conn)
+void CClient::OnPostConnect(int Conn, bool Dummy)
 {
 	if(!m_ServerCapabilities.m_ChatTimeoutCode)
 		return;
 
+	char aBuf[128];
 	char aBufMsg[256];
 	if(!g_Config.m_ClRunOnJoin[0] && !g_Config.m_ClDummyDefaultEyes && !g_Config.m_ClPlayerDefaultEyes)
 		str_format(aBufMsg, sizeof(aBufMsg), "/timeout %s", m_aTimeoutCodes[Conn]);
@@ -512,29 +511,39 @@ void CClient::OnPostConnect(int Conn)
 
 	if(g_Config.m_ClDummyDefaultEyes || g_Config.m_ClPlayerDefaultEyes)
 	{
-		int Emote = Conn == CONN_DUMMY ? g_Config.m_ClDummyDefaultEyes : g_Config.m_ClPlayerDefaultEyes;
-
-		if(Emote != EMOTE_NORMAL)
+		int Emote = ((g_Config.m_ClDummy) ? !Dummy : Dummy) ? g_Config.m_ClDummyDefaultEyes : g_Config.m_ClPlayerDefaultEyes;
+		char aBufEmote[128];
+		aBufEmote[0] = '\0';
+		switch(Emote)
 		{
-			char aBuf[32];
-			static const char *s_EMOTE_NAMES[] = {
-				"pain",
-				"happy",
-				"surprise",
-				"angry",
-				"blink",
-			};
-			static_assert(std::size(s_EMOTE_NAMES) == NUM_EMOTES - 1, "The size of EMOTE_NAMES must match NUM_EMOTES - 1");
-
-			str_append(aBufMsg, ";");
-			str_format(aBuf, sizeof(aBuf), "emote %s %d", s_EMOTE_NAMES[Emote - 1], g_Config.m_ClEyeDuration);
+		case EMOTE_NORMAL:
+			break;
+		case EMOTE_PAIN:
+			str_format(aBufEmote, sizeof(aBufEmote), "emote pain %d", g_Config.m_ClEyeDuration);
+			break;
+		case EMOTE_HAPPY:
+			str_format(aBufEmote, sizeof(aBufEmote), "emote happy %d", g_Config.m_ClEyeDuration);
+			break;
+		case EMOTE_SURPRISE:
+			str_format(aBufEmote, sizeof(aBufEmote), "emote surprise %d", g_Config.m_ClEyeDuration);
+			break;
+		case EMOTE_ANGRY:
+			str_format(aBufEmote, sizeof(aBufEmote), "emote angry %d", g_Config.m_ClEyeDuration);
+			break;
+		case EMOTE_BLINK:
+			str_format(aBufEmote, sizeof(aBufEmote), "emote blink %d", g_Config.m_ClEyeDuration);
+			break;
+		}
+		if(aBufEmote[0])
+		{
+			str_format(aBuf, sizeof(aBuf), ";%s", aBufEmote);
 			str_append(aBufMsg, aBuf);
 		}
 	}
 	if(g_Config.m_ClRunOnJoin[0])
 	{
-		str_append(aBufMsg, ";");
-		str_append(aBufMsg, g_Config.m_ClRunOnJoin);
+		str_format(aBuf, sizeof(aBuf), ";%s", g_Config.m_ClRunOnJoin);
+		str_append(aBufMsg, aBuf);
 	}
 	if(IsSixup())
 	{
@@ -736,7 +745,6 @@ void CClient::DisconnectWithReason(const char *pReason)
 	m_pConsole->DeregisterTempAll();
 	m_ExpectedMaplistEntries = -1;
 	m_vMaplistEntries.clear();
-	GameClient()->ForceUpdateConsoleRemoteCompletionSuggestions();
 	m_aNetClient[CONN_MAIN].Disconnect(pReason);
 	SetState(IClient::STATE_OFFLINE);
 	m_pMap->Unload();
@@ -1072,26 +1080,6 @@ void CClient::Quit()
 	SetState(IClient::STATE_QUITTING);
 }
 
-void CClient::ResetSocket()
-{
-	NETADDR BindAddr;
-	if(g_Config.m_Bindaddr[0] == '\0')
-	{
-		mem_zero(&BindAddr, sizeof(BindAddr));
-	}
-	else if(net_host_lookup(g_Config.m_Bindaddr, &BindAddr, NETTYPE_ALL) != 0)
-	{
-		log_error("client", "The configured bindaddr '%s' cannot be resolved.", g_Config.m_Bindaddr);
-		return;
-	}
-	BindAddr.type = NETTYPE_ALL;
-	for(size_t Conn = 0; Conn < std::size(m_aNetClient); Conn++)
-	{
-		char aError[256];
-		if(!InitNetworkClientImpl(BindAddr, Conn, aError, sizeof(aError)))
-			log_error("client", "%s", aError);
-	}
-}
 const char *CClient::PlayerName() const
 {
 	if(g_Config.m_PlayerName[0])
@@ -1157,7 +1145,7 @@ const char *CClient::LoadMap(const char *pName, const char *pFilename, SHA256_DI
 	if((bool)m_LoadingCallback)
 		m_LoadingCallback(IClient::LOADING_CALLBACK_DETAIL_MAP);
 
-	if(!m_pMap->Load(pFilename, IStorage::TYPE_ALL))
+	if(!m_pMap->Load(pFilename))
 	{
 		str_format(s_aErrorMsg, sizeof(s_aErrorMsg), "map '%s' not found", pFilename);
 		return s_aErrorMsg;
@@ -1385,7 +1373,7 @@ void CClient::ProcessServerInfo(int RawType, NETADDR *pFrom, const void *pData, 
 				return;
 			break;
 		default:
-			dbg_assert_failed("unknown serverinfo type");
+			dbg_assert(false, "unknown serverinfo type");
 		}
 
 		if(SavedType == SERVERINFO_EXTENDED)
@@ -1908,7 +1896,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 			if(!Unpacker.Error())
 			{
 				m_pConsole->RegisterTemp(pName, pParams, CFGFLAG_SERVER, pHelp);
-				GameClient()->ForceUpdateConsoleRemoteCompletionSuggestions();
 			}
 			m_GotRconCommands++;
 		}
@@ -1918,7 +1905,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 			if(!Unpacker.Error())
 			{
 				m_pConsole->DeregisterTemp(pName);
-				GameClient()->ForceUpdateConsoleRemoteCompletionSuggestions();
 			}
 		}
 		else if((pPacket->m_Flags & NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_RCON_AUTH_STATUS)
@@ -1944,7 +1930,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 					m_pConsole->DeregisterTempAll();
 					m_ExpectedRconCommands = -1;
 					m_vMaplistEntries.clear();
-					GameClient()->ForceUpdateConsoleRemoteCompletionSuggestions();
 					m_ExpectedMaplistEntries = -1;
 				}
 			}
@@ -2047,7 +2032,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 					unsigned char aTmpBuffer3[CSnapshot::MAX_SIZE];
 					CSnapshot *pTmpBuffer3 = (CSnapshot *)aTmpBuffer3; // Fix compiler warning for strict-aliasing
 
-					// reset snapshotting
+					// reset snapshoting
 					m_aSnapshotParts[Conn] = 0;
 
 					// find snapshot that we should use as delta
@@ -2232,7 +2217,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 
 					if(m_aReceivedSnapshots[Conn] > GameTickSpeed() && !m_aDidPostConnect[Conn])
 					{
-						OnPostConnect(Conn);
+						OnPostConnect(Conn, Dummy);
 						m_aDidPostConnect[Conn] = true;
 					}
 
@@ -2274,7 +2259,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 				if(pMapName[0] != '\0')
 				{
 					m_vMaplistEntries.emplace_back(pMapName);
-					GameClient()->ForceUpdateConsoleRemoteCompletionSuggestions();
 				}
 			}
 		}
@@ -2285,7 +2269,6 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 				return;
 
 			m_vMaplistEntries.clear();
-			GameClient()->ForceUpdateConsoleRemoteCompletionSuggestions();
 			m_ExpectedMaplistEntries = ExpectedMaplistEntries;
 		}
 		else if(Conn == CONN_MAIN && (pPacket->m_Flags & NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_MAPLIST_GROUP_END)
@@ -2293,8 +2276,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 			m_ExpectedMaplistEntries = -1;
 		}
 	}
-	// the client handles only vital messages https://github.com/ddnet/ddnet/issues/11178
-	else if((pPacket->m_Flags & NET_CHUNKFLAG_VITAL) != 0 || Msg == NETMSGTYPE_SV_PREINPUT)
+	else if((pPacket->m_Flags & NET_CHUNKFLAG_VITAL) != 0)
 	{
 		// game message
 		if(!Dummy)
@@ -2589,17 +2571,6 @@ void CClient::PumpNetwork()
 			SetLoadingStateDetail(IClient::LOADING_STATE_DETAIL_INITIAL);
 			SendInfo(CONN_MAIN);
 		}
-
-		// progress on dummy connect when the connection is online
-		if(m_DummySendConnInfo && m_aNetClient[CONN_DUMMY].State() == NETSTATE_ONLINE)
-		{
-			m_DummySendConnInfo = false;
-			SendInfo(CONN_DUMMY);
-			m_aNetClient[CONN_DUMMY].Update();
-			SendReady(CONN_DUMMY);
-			GameClient()->SendDummyInfo(true);
-			SendEnterGame(CONN_DUMMY);
-		}
 	}
 
 	// process packets
@@ -2694,7 +2665,7 @@ void CClient::UpdateDemoIntraTimers()
 	m_aGameIntraTick[0] = pInfo->m_IntraTick;
 	m_aGameTickTime[0] = pInfo->m_TickTime;
 	m_aGameIntraTickSincePrev[0] = pInfo->m_IntraTickSincePrev;
-}
+};
 
 void CClient::Update()
 {
@@ -3227,6 +3198,17 @@ void CClient::Run()
 			m_aCmdEditMap[0] = 0;
 		}
 
+		// progress on dummy connect when the connection is online
+		if(m_DummySendConnInfo && m_aNetClient[CONN_DUMMY].State() == NETSTATE_ONLINE)
+		{
+			m_DummySendConnInfo = false;
+			SendInfo(CONN_DUMMY);
+			m_aNetClient[CONN_DUMMY].Update();
+			SendReady(CONN_DUMMY);
+			GameClient()->SendDummyInfo(true);
+			SendEnterGame(CONN_DUMMY);
+		}
+
 		// update input
 		if(Input()->Update())
 		{
@@ -3438,60 +3420,31 @@ bool CClient::InitNetworkClient(char *pError, size_t ErrorSize)
 		return false;
 	}
 	BindAddr.type = NETTYPE_ALL;
-	for(size_t i = 0; i < std::size(m_aNetClient); i++)
+	for(unsigned int i = 0; i < std::size(m_aNetClient); i++)
 	{
-		if(!InitNetworkClientImpl(BindAddr, i, pError, ErrorSize))
+		int &PortRef = i == CONN_MAIN ? g_Config.m_ClPort : i == CONN_DUMMY ? g_Config.m_ClDummyPort : g_Config.m_ClContactPort;
+		if(PortRef < 1024) // Reject users setting ports that we don't want to use
 		{
-			return false;
+			PortRef = 0;
 		}
-	}
-	return true;
-}
-
-bool CClient::InitNetworkClientImpl(NETADDR BindAddr, int Conn, char *pError, size_t ErrorSize)
-{
-	int *pPort;
-	const char *pName;
-	switch(Conn)
-	{
-	case CONN_MAIN:
-		pPort = &g_Config.m_ClPort;
-		pName = "main";
-		break;
-	case CONN_DUMMY:
-		pPort = &g_Config.m_ClDummyPort;
-		pName = "dummy";
-		break;
-	case CONN_CONTACT:
-		pPort = &g_Config.m_ClContactPort;
-		pName = "contact";
-		break;
-	default:
-		dbg_assert_failed("unreachable");
-	}
-	if(m_aNetClient[Conn].State() != NETSTATE_OFFLINE)
-	{
-		str_format(pError, ErrorSize, "Could not open network client %s while already connected.", pName);
-		return false;
-	}
-	if(*pPort < 1024) // Reject users setting ports that we don't want to use
-		*pPort = 0;
-	BindAddr.port = *pPort;
-
-	unsigned RemainingAttempts = 25;
-	while(!m_aNetClient[Conn].Open(BindAddr))
-	{
-		--RemainingAttempts;
-		if(RemainingAttempts == 0)
+		BindAddr.port = PortRef;
+		unsigned RemainingAttempts = 25;
+		while(!m_aNetClient[i].Open(BindAddr))
 		{
-			if(g_Config.m_Bindaddr[0])
-				str_format(pError, ErrorSize, "Could not open network client %s, try changing or unsetting the bindaddr '%s'.", pName, g_Config.m_Bindaddr);
-			else
-				str_format(pError, ErrorSize, "Could not open network client %s.", pName);
-			return false;
+			--RemainingAttempts;
+			if(RemainingAttempts == 0)
+			{
+				if(g_Config.m_Bindaddr[0])
+					str_format(pError, ErrorSize, "Could not open the network client, try changing or unsetting the bindaddr '%s'.", g_Config.m_Bindaddr);
+				else
+					str_copy(pError, "Could not open the network client.", ErrorSize);
+				return false;
+			}
+			if(BindAddr.port != 0)
+			{
+				BindAddr.port = 0;
+			}
 		}
-		if(BindAddr.port != 0)
-			BindAddr.port = 0;
 	}
 	return true;
 }
@@ -3564,12 +3517,6 @@ void CClient::Con_Ping(IConsole::IResult *pResult, void *pUserData)
 	CMsgPacker Msg(NETMSG_PING, true);
 	pSelf->SendMsg(CONN_MAIN, &Msg, MSGFLAG_FLUSH);
 	pSelf->m_PingStartTime = time_get();
-}
-
-void CClient::ConNetReset(IConsole::IResult *pResult, void *pUserData)
-{
-	CClient *pSelf = (CClient *)pUserData;
-	pSelf->ResetSocket();
 }
 
 void CClient::AutoScreenshot_Start()
@@ -4247,7 +4194,7 @@ int CClient::HandleChecksum(int Conn, CUuid Uuid, CUnpacker *pUnpacker)
 	if(Start <= (int)sizeof(m_Checksum.m_aBytes))
 	{
 		mem_zero(&m_Checksum.m_Data.m_Config, sizeof(m_Checksum.m_Data.m_Config));
-#define CHECKSUM_RECORD(Flags) (((Flags) & CFGFLAG_CLIENT) == 0 || ((Flags) & CFGFLAG_INSENSITIVE) != 0)
+#define CHECKSUM_RECORD(Flags) (((Flags)&CFGFLAG_CLIENT) == 0 || ((Flags)&CFGFLAG_INSENSITIVE) != 0)
 #define MACRO_CONFIG_INT(Name, ScriptName, Def, Min, Max, Flags, Desc) \
 	if(CHECKSUM_RECORD(Flags)) \
 	{ \
@@ -4328,7 +4275,7 @@ void CClient::ConchainWindowScreen(IConsole::IResult *pResult, void *pUserData, 
 	if(pSelf->Graphics() && pResult->NumArguments())
 	{
 		if(g_Config.m_GfxScreen != pResult->GetInteger(0))
-			pSelf->Graphics()->SwitchWindowScreen(pResult->GetInteger(0), true);
+			pSelf->Graphics()->SwitchWindowScreen(pResult->GetInteger(0));
 	}
 	else
 		pfnCallback(pResult, pCallbackUserData);
@@ -4434,14 +4381,6 @@ void CClient::ConchainInputFifo(IConsole::IResult *pResult, void *pUserData, ICo
 	}
 }
 
-void CClient::ConchainNetReset(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
-{
-	CClient *pSelf = (CClient *)pUserData;
-	pfnCallback(pResult, pCallbackUserData);
-	if(pResult->NumArguments())
-		pSelf->ResetSocket();
-}
-
 void CClient::ConchainLoglevel(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)
 {
 	CClient *pSelf = (CClient *)pUserData;
@@ -4478,7 +4417,6 @@ void CClient::RegisterCommands()
 	m_pConsole->Register("disconnect", "", CFGFLAG_CLIENT, Con_Disconnect, this, "Disconnect from the server");
 	m_pConsole->Register("ping", "", CFGFLAG_CLIENT, Con_Ping, this, "Ping the current server");
 	m_pConsole->Register("screenshot", "", CFGFLAG_CLIENT | CFGFLAG_STORE, Con_Screenshot, this, "Take a screenshot");
-	m_pConsole->Register("net_reset", "", CFGFLAG_CLIENT, ConNetReset, this, "Rebinds the client's listening address and port");
 
 #if defined(CONF_VIDEORECORDER)
 	m_pConsole->Register("start_video", "?r[file]", CFGFLAG_CLIENT, Con_StartVideo, this, "Start recording a video");
@@ -4509,10 +4447,6 @@ void CClient::RegisterCommands()
 	m_pConsole->Chain("cl_timeout_seed", ConchainTimeoutSeed, this);
 	m_pConsole->Chain("cl_replays", ConchainReplays, this);
 	m_pConsole->Chain("cl_input_fifo", ConchainInputFifo, this);
-	m_pConsole->Chain("cl_port", ConchainNetReset, this);
-	m_pConsole->Chain("cl_dummy_port", ConchainNetReset, this);
-	m_pConsole->Chain("cl_contact_port", ConchainNetReset, this);
-	m_pConsole->Chain("bindaddr", ConchainNetReset, this);
 
 	m_pConsole->Chain("password", ConchainPassword, this);
 
@@ -4912,7 +4846,7 @@ int main(int argc, const char **argv)
 	if(pStorage->FileExists(CONFIG_FILE, IStorage::TYPE_ALL))
 	{
 		pConsole->SetUnknownCommandCallback(SaveUnknownCommandCallback, pClient);
-		if(!pConsole->ExecuteFile(CONFIG_FILE, IConsole::CLIENT_ID_UNSPECIFIED))
+		if(!pConsole->ExecuteFile(CONFIG_FILE))
 		{
 			const char *pError = "Failed to load config from '" CONFIG_FILE "'.";
 			log_error("client", "%s", pError);
@@ -4926,11 +4860,11 @@ int main(int argc, const char **argv)
 	// execute autoexec file
 	if(pStorage->FileExists(AUTOEXEC_CLIENT_FILE, IStorage::TYPE_ALL))
 	{
-		pConsole->ExecuteFile(AUTOEXEC_CLIENT_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
+		pConsole->ExecuteFile(AUTOEXEC_CLIENT_FILE);
 	}
 	else // fallback
 	{
-		pConsole->ExecuteFile(AUTOEXEC_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
+		pConsole->ExecuteFile(AUTOEXEC_FILE);
 	}
 
 	if(g_Config.m_ClConfigVersion < 1)
@@ -5323,16 +5257,16 @@ void CClient::ShellRegister()
 	}
 
 	bool Updated = false;
-	if(!windows_shell_register_protocol("ddnet", aFullPath, &Updated))
+	if(!shell_register_protocol("ddnet", aFullPath, &Updated))
 		log_error("client", "Failed to register ddnet protocol");
-	if(!windows_shell_register_extension(".map", "Map File", GAME_NAME, aFullPath, &Updated))
+	if(!shell_register_extension(".map", "Map File", GAME_NAME, aFullPath, &Updated))
 		log_error("client", "Failed to register .map file extension");
-	if(!windows_shell_register_extension(".demo", "Demo File", GAME_NAME, aFullPath, &Updated))
+	if(!shell_register_extension(".demo", "Demo File", GAME_NAME, aFullPath, &Updated))
 		log_error("client", "Failed to register .demo file extension");
-	if(!windows_shell_register_application(GAME_NAME, aFullPath, &Updated))
+	if(!shell_register_application(GAME_NAME, aFullPath, &Updated))
 		log_error("client", "Failed to register application");
 	if(Updated)
-		windows_shell_update();
+		shell_update();
 }
 
 void CClient::ShellUnregister()
@@ -5346,16 +5280,16 @@ void CClient::ShellUnregister()
 	}
 
 	bool Updated = false;
-	if(!windows_shell_unregister_class("ddnet", &Updated))
+	if(!shell_unregister_class("ddnet", &Updated))
 		log_error("client", "Failed to unregister ddnet protocol");
-	if(!windows_shell_unregister_class(GAME_NAME ".map", &Updated))
+	if(!shell_unregister_class(GAME_NAME ".map", &Updated))
 		log_error("client", "Failed to unregister .map file extension");
-	if(!windows_shell_unregister_class(GAME_NAME ".demo", &Updated))
+	if(!shell_unregister_class(GAME_NAME ".demo", &Updated))
 		log_error("client", "Failed to unregister .demo file extension");
-	if(!windows_shell_unregister_application(aFullPath, &Updated))
+	if(!shell_unregister_application(aFullPath, &Updated))
 		log_error("client", "Failed to unregister application");
 	if(Updated)
-		windows_shell_update();
+		shell_update();
 }
 #endif
 

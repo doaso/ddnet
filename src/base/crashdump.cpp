@@ -7,7 +7,6 @@
 
 #include "log.h"
 #include "system.h"
-#include "windows.h"
 
 #include <windows.h>
 

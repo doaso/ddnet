@@ -37,7 +37,6 @@ public:
 
 	CGameWorld();
 	~CGameWorld();
-	void Init(CCollision *pCollision, CTuningParams *pTuningList, const CMapBugs *pMapBugs);
 
 	CEntity *FindFirst(int Type);
 	CEntity *FindLast(int Type);
@@ -54,14 +53,16 @@ public:
 	std::vector<CCharacter *> IntersectedCharacters(vec2 Pos0, vec2 Pos1, float Radius, const CEntity *pNotThis = nullptr);
 
 	int m_GameTick;
+	CCollision *m_pCollision;
 
 	// getter for server variables
 	int GameTick() const { return m_GameTick; }
 	int GameTickSpeed() const { return SERVER_TICK_SPEED; }
 	const CCollision *Collision() const { return m_pCollision; }
-	CCollision *Collision() { return m_pCollision; }
+	CCollision *Collision() { return m_pCollision; } // NOLINT(readability-make-member-function-const)
 	CTeamsCore *Teams() { return &m_Teams; }
 	std::vector<SSwitchers> &Switchers() { return m_Core.m_vSwitchers; }
+	CTuningParams *Tuning();
 	CEntity *GetEntity(int Id, int EntityType);
 	CCharacter *GetCharacterById(int Id) { return (Id >= 0 && Id < MAX_CLIENTS) ? m_apCharacters[Id] : nullptr; }
 
@@ -101,13 +102,13 @@ public:
 	CEntity *FindMatch(int ObjId, int ObjType, const void *pObjData);
 	void Clear();
 
+	CTuningParams *m_pTuningList;
 	const CTuningParams *TuningList() const { return m_pTuningList; }
-	CTuningParams *TuningList() { return m_pTuningList; }
-	const CTuningParams *GlobalTuning() const { return &TuningList()[0]; }
-	CTuningParams *GlobalTuning() { return &TuningList()[0]; }
+	CTuningParams *TuningList() { return m_pTuningList; } // NOLINT(readability-make-member-function-const)
 	const CTuningParams *GetTuning(int i) const { return &TuningList()[i]; }
 	CTuningParams *GetTuning(int i) { return &TuningList()[i]; }
 
+	const CMapBugs *m_pMapBugs;
 	bool EmulateBug(int Bug) const;
 
 private:
@@ -117,10 +118,6 @@ private:
 	CEntity *m_apFirstEntityTypes[NUM_ENTTYPES];
 
 	CCharacter *m_apCharacters[MAX_CLIENTS];
-
-	CCollision *m_pCollision;
-	CTuningParams *m_pTuningList;
-	const CMapBugs *m_pMapBugs;
 };
 
 class CCharOrder

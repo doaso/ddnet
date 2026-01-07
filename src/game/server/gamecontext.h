@@ -27,7 +27,7 @@
 			Game World (GAMEWORLD::tick)
 				Reset world if requested (GAMEWORLD::reset)
 				All entities in the world (ENTITY::tick)
-				All entities in the world (ENTITY::tick_deferred)
+				All entities in the world (ENTITY::tick_defered)
 				Remove entities marked for deletion (GAMEWORLD::remove_entities)
 			Game Controller (GAMECONTROLLER::tick)
 			All players (CPlayer::tick)
@@ -81,8 +81,6 @@ public:
 	bool m_Initialized = false;
 	bool m_InitialDelay;
 	char m_aReason[128];
-	char m_aClientName[MAX_NAME_LENGTH];
-	bool m_NameKnown;
 
 	int SecondsLeft() const;
 };
@@ -92,7 +90,7 @@ class CMutes
 public:
 	CMutes(const char *pSystemName);
 
-	bool Mute(const NETADDR *pAddr, int Seconds, const char *pReason, const char *pClientName, bool InitialDelay);
+	bool Mute(const NETADDR *pAddr, int Seconds, const char *pReason, bool InitialDelay);
 	void UnmuteIndex(int Index);
 	void UnmuteAddr(const NETADDR *pAddr);
 	void UnmuteExpired();
@@ -117,7 +115,8 @@ class CGameContext : public IGameServer
 	CCollision m_Collision;
 	protocol7::CNetObjHandler m_NetObjHandler7;
 	CNetObjHandler m_NetObjHandler;
-	CTuningParams m_aTuningList[TuneZone::NUM];
+	CTuningParams m_Tuning;
+	CTuningParams m_aTuningList[NUM_TUNEZONES];
 	std::vector<std::string> m_vCensorlist;
 
 	bool m_TeeHistorianActive;
@@ -148,8 +147,6 @@ class CGameContext : public IGameServer
 	static void ConRandomMap(IConsole::IResult *pResult, void *pUserData);
 	static void ConRandomUnfinishedMap(IConsole::IResult *pResult, void *pUserData);
 	static void ConRestart(IConsole::IResult *pResult, void *pUserData);
-	static void ConServerAlert(IConsole::IResult *pResult, void *pUserData);
-	static void ConModAlert(IConsole::IResult *pResult, void *pUserData);
 	static void ConBroadcast(IConsole::IResult *pResult, void *pUserData);
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetTeam(IConsole::IResult *pResult, void *pUserData);
@@ -171,6 +168,8 @@ class CGameContext : public IGameServer
 	static void ConchainPracticeByDefaultUpdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConDumpLog(IConsole::IResult *pResult, void *pUserData);
 
+	void Construct(int Resetting);
+	void Destruct(int Resetting);
 	void AddVote(const char *pDescription, const char *pCommand);
 	static int MapScan(const char *pName, int IsDir, int DirType, void *pUserData);
 
@@ -194,15 +193,16 @@ public:
 	IEngine *Engine() { return m_pEngine; }
 	IStorage *Storage() { return m_pStorage; }
 	CCollision *Collision() { return &m_Collision; }
-	CTuningParams *GlobalTuning() { return &m_aTuningList[0]; }
-	CTuningParams *TuningList() { return m_aTuningList; }
+	CTuningParams *Tuning() { return &m_Tuning; }
+	CTuningParams *TuningList() { return &m_aTuningList[0]; }
 	IAntibot *Antibot() { return m_pAntibot; }
 	CTeeHistorian *TeeHistorian() { return &m_TeeHistorian; }
 	bool TeeHistorianActive() const { return m_TeeHistorianActive; }
 	CNetObjHandler *GetNetObjHandler() override { return &m_NetObjHandler; }
 	protocol7::CNetObjHandler *GetNetObjHandler7() override { return &m_NetObjHandler7; }
 
-	CGameContext(bool Resetting = false);
+	CGameContext();
+	CGameContext(int Reset);
 	~CGameContext() override;
 
 	void Clear();
@@ -224,8 +224,7 @@ public:
 	CGameWorld m_World;
 
 	// helper functions
-	CCharacter *GetPlayerChar(int ClientId);
-	const CCharacter *GetPlayerChar(int ClientId) const;
+	class CCharacter *GetPlayerChar(int ClientId);
 	bool EmulateBug(int Bug) const;
 	std::vector<SSwitchers> &Switchers() { return m_World.m_Core.m_vSwitchers; }
 
@@ -247,8 +246,8 @@ public:
 	char m_aVoteReason[VOTE_REASON_LENGTH];
 	int m_NumVoteOptions;
 	int m_VoteEnforce;
-	char m_aaZoneEnterMsg[TuneZone::NUM][256]; // 0 is used for switching from or to area without tunings
-	char m_aaZoneLeaveMsg[TuneZone::NUM][256];
+	char m_aaZoneEnterMsg[NUM_TUNEZONES][256]; // 0 is used for switching from or to area without tunings
+	char m_aaZoneLeaveMsg[NUM_TUNEZONES][256];
 
 	void CreateAllEntities(bool Initial);
 	CPlayer *CreatePlayer(int ClientId, int StartTeam, bool Afk, int LastWhisperTo);
@@ -299,12 +298,9 @@ public:
 	void SendStartWarning(int ClientId, const char *pMessage);
 	void SendEmoticon(int ClientId, int Emoticon, int TargetClientId) const;
 	void SendWeaponPickup(int ClientId, int Weapon) const;
-	void SendMotd(int ClientId) const;
+	void SendMotd(int ClientId,  const char* pMessage) const;
 	void SendSettings(int ClientId) const;
-	void SendServerAlert(const char *pMessage);
-	void SendModeratorAlert(const char *pMessage, int ToClientId);
 	void SendBroadcast(const char *pText, int ClientId, bool IsImportant = true);
-	void SendSkinChange7(int ClientId);
 
 	void List(int ClientId, const char *pFilter);
 
@@ -348,7 +344,6 @@ public:
 	void OnChangeInfoNetMessage(const CNetMsg_Cl_ChangeInfo *pMsg, int ClientId);
 	void OnEmoticonNetMessage(const CNetMsg_Cl_Emoticon *pMsg, int ClientId);
 	void OnKillNetMessage(const CNetMsg_Cl_Kill *pMsg, int ClientId);
-	void OnEnableSpectatorCountNetMessage(const CNetMsg_Cl_EnableSpectatorCount *pMsg, int ClientId);
 	void OnStartInfoNetMessage(const CNetMsg_Cl_StartInfo *pMsg, int ClientId);
 
 	bool OnClientDataPersist(int ClientId, void *pData) override;
@@ -397,7 +392,7 @@ public:
 	bool PlayerExists(int ClientId) const override { return m_apPlayers[ClientId]; }
 	// Returns true if someone is actively moderating.
 	bool PlayerModerating() const;
-	void ForceVote(bool Success);
+	void ForceVote(int EnforcerId, bool Success);
 
 	// Checks if player can vote and notify them about the reason
 	bool RateLimitPlayerVote(int ClientId);
@@ -416,22 +411,52 @@ private:
 	bool m_VoteWillPass;
 	CScore *m_pScore;
 
+	static void ConLogin(IConsole::IResult *pResult, void *pUserData);
+	static void ConRegister(IConsole::IResult *pResult, void *pUserData);
+	static void ConPasswd(IConsole::IResult *pResult, void *pUserData);
+	static void ConRules(IConsole::IResult *pResult, void *pUserData);
+        
+	static void ConOrel(IConsole::IResult *pResult, void *pUserData);
+	static void ConReshka(IConsole::IResult *pResult, void *pUserData);
+	static void ConYes(IConsole::IResult *pResult, void *pUserData);
+	static void ConNo(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConBroadcastC(IConsole::IResult *pResult, void *pUserData);
+	static void ConCommands(IConsole::IResult *pResult, void *pUserData);
+	static void ConShop(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConUnJetpackC(IConsole::IResult *pResult, void *pUserData);
+	static void ConJetpackC(IConsole::IResult *pResult, void *pUserData);
+	static void ConGiveGun(IConsole::IResult *pResult, void *pUserData);
+	static void ConInfjump(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnInfjump(IConsole::IResult *pResult, void *pUserData);
+	static void ConInfhook(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnInfhook(IConsole::IResult *pResult, void *pUserData);
+	static void ConEffect(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConGetHere(IConsole::IResult *pResult, void *pUserData);
+	static void ConGoto(IConsole::IResult *pResult, void *pUserData);
+	static void ConTpSpec(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnTpSpec(IConsole::IResult *pResult, void *pUserData);
+	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnFreeze(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConSetTempLevel(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetLevel(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetPoints(IConsole::IResult *pResult, void *pUserData);
+	static void ConKickC(IConsole::IResult *pResult, void *pUserData);
+	static void ConMuteC(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnMuteC(IConsole::IResult *pResult, void *pUserData);
+	static void ConBanC(IConsole::IResult *pResult, void *pUserData);
 	// DDRace Console Commands
 
-	static void ConKillPlayer(IConsole::IResult *pResult, void *pUserData);
 
+
+	static void ConKillPlayer(IConsole::IResult *pResult, void *pUserData);
 	static void ConNinja(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnNinja(IConsole::IResult *pResult, void *pUserData);
 	static void ConEndlessHook(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnEndlessHook(IConsole::IResult *pResult, void *pUserData);
-	static void ConSolo(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnSolo(IConsole::IResult *pResult, void *pUserData);
-	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConDeep(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnDeep(IConsole::IResult *pResult, void *pUserData);
-	static void ConLiveFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnLiveFreeze(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnSuper(IConsole::IResult *pResult, void *pUserData);
 	static void ConSuper(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleInvincible(IConsole::IResult *pResult, void *pUserData);
@@ -459,16 +484,9 @@ private:
 	static void ConMove(IConsole::IResult *pResult, void *pUserData);
 	static void ConMoveRaw(IConsole::IResult *pResult, void *pUserData);
 
-	static void ConToTeleporter(IConsole::IResult *pResult, void *pUserData);
-	static void ConToCheckTeleporter(IConsole::IResult *pResult, void *pUserData);
 	void Teleport(CCharacter *pChr, vec2 Pos);
 	static void ConTeleport(IConsole::IResult *pResult, void *pUserData);
 
-	static void ConCredits(IConsole::IResult *pResult, void *pUserData);
-	static void ConInfo(IConsole::IResult *pResult, void *pUserData);
-	static void ConHelp(IConsole::IResult *pResult, void *pUserData);
-	static void ConSettings(IConsole::IResult *pResult, void *pUserData);
-	static void ConRules(IConsole::IResult *pResult, void *pUserData);
 	static void ConKill(IConsole::IResult *pResult, void *pUserData);
 	static void ConTogglePause(IConsole::IResult *pResult, void *pUserData);
 	static void ConTogglePauseVoted(IConsole::IResult *pResult, void *pUserData);
@@ -479,35 +497,25 @@ private:
 	static void ConTop(IConsole::IResult *pResult, void *pUserData);
 	static void ConTimes(IConsole::IResult *pResult, void *pUserData);
 	static void ConPoints(IConsole::IResult *pResult, void *pUserData);
+	static void ConStats(IConsole::IResult *pResult, void *pUserData);
+	static void ConPayPoints(IConsole::IResult *pResult, void *pUserData);
 	static void ConTopPoints(IConsole::IResult *pResult, void *pUserData);
 	static void ConTimeCP(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConDND(IConsole::IResult *pResult, void *pUserData);
-	static void ConWhispers(IConsole::IResult *pResult, void *pUserData);
-	static void ConMapInfo(IConsole::IResult *pResult, void *pUserData);
 	static void ConTimeout(IConsole::IResult *pResult, void *pUserData);
-	static void ConPractice(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnPractice(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeCmdList(IConsole::IResult *pResult, void *pUserData);
-	static void ConSwap(IConsole::IResult *pResult, void *pUserData);
-	static void ConCancelSwap(IConsole::IResult *pResult, void *pUserData);
-	static void ConSave(IConsole::IResult *pResult, void *pUserData);
-	static void ConLoad(IConsole::IResult *pResult, void *pUserData);
 	static void ConMap(IConsole::IResult *pResult, void *pUserData);
 	static void ConTeamRank(IConsole::IResult *pResult, void *pUserData);
 	static void ConRank(IConsole::IResult *pResult, void *pUserData);
 	static void ConTeam(IConsole::IResult *pResult, void *pUserData);
+	static void ConVanis(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnVanis(IConsole::IResult *pResult, void *pUserData);
 	static void ConLock(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnlock(IConsole::IResult *pResult, void *pUserData);
 	static void ConInvite(IConsole::IResult *pResult, void *pUserData);
 	static void ConJoin(IConsole::IResult *pResult, void *pUserData);
 	static void ConTeam0Mode(IConsole::IResult *pResult, void *pUserData);
-	static void ConWhisper(IConsole::IResult *pResult, void *pUserData);
-	static void ConConverse(IConsole::IResult *pResult, void *pUserData);
-	static void ConSetEyeEmote(IConsole::IResult *pResult, void *pUserData);
 	static void ConEyeEmote(IConsole::IResult *pResult, void *pUserData);
-	static void ConShowOthers(IConsole::IResult *pResult, void *pUserData);
-	static void ConShowAll(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpecTeam(IConsole::IResult *pResult, void *pUserData);
 	static void ConNinjaJetpack(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTime(IConsole::IResult *pResult, void *pUserData);
@@ -516,15 +524,8 @@ private:
 	static void ConSetTimerType(IConsole::IResult *pResult, void *pUserData);
 	static void ConRescue(IConsole::IResult *pResult, void *pUserData);
 	static void ConRescueMode(IConsole::IResult *pResult, void *pUserData);
-	static void ConBack(IConsole::IResult *pResult, void *pUserData);
-	static void ConTeleTo(IConsole::IResult *pResult, void *pUserData);
-	static void ConTeleXY(IConsole::IResult *pResult, void *pUserData);
-	static void ConTeleCursor(IConsole::IResult *pResult, void *pUserData);
-	static void ConLastTele(IConsole::IResult *pResult, void *pUserData);
 
 	// Chat commands for practice mode
-	static void ConPracticeToTeleporter(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToCheckTeleporter(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeUnSolo(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeSolo(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeUnDeep(IConsole::IResult *pResult, void *pUserData);
@@ -549,9 +550,6 @@ private:
 	static void ConPracticeEndlessHook(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeUnEndlessHook(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeToggleInvincible(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleCollision(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleHookCollision(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleHitOthers(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConPracticeAddWeapon(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeRemoveWeapon(IConsole::IResult *pResult, void *pUserData);
@@ -559,7 +557,6 @@ private:
 	static void ConProtectedKill(IConsole::IResult *pResult, void *pUserData);
 	static void ConModerate(IConsole::IResult *pResult, void *pUserData);
 
-	static void ConList(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetDDRTeam(IConsole::IResult *pResult, void *pUserData);
 	static void ConUninvite(IConsole::IResult *pResult, void *pUserData);
 
@@ -635,7 +632,7 @@ public:
 	bool IsRunningKickOrSpecVote(int ClientId) const;
 
 	void SendRecord(int ClientId);
-	void SendFinish(int ClientId, float Time, std::optional<float> PreviousBestTime);
+	void SendFinish(int ClientId, float Time, float PreviousBestTime);
 	void SendSaveCode(int Team, int TeamSize, int State, const char *pError, const char *pSaveRequester, const char *pServerName, const char *pGeneratedCode, const char *pCode);
 	void OnSetAuthed(int ClientId, int Level) override;
 

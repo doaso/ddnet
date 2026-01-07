@@ -5,7 +5,6 @@
 #include <base/system.h>
 
 #include <engine/client.h>
-#include <engine/console.h>
 #include <engine/external/json-parser/json.h>
 #include <engine/shared/config.h>
 #include <engine/shared/jsonwriter.h>
@@ -134,7 +133,7 @@ CTouchControls::CUnitRect CTouchControls::CalculateHitbox(const CUnitRect &Rect,
 		}
 		return Hitbox;
 	}
-	default: dbg_assert_failed("Unhandled shape");
+	default: dbg_assert(false, "Unhandled shape");
 	}
 }
 
@@ -220,7 +219,8 @@ vec2 CTouchControls::CTouchButton::ClampTouchPosition(vec2 TouchPosition) const
 		break;
 	}
 	default:
-		dbg_assert_failed("Unhandled shape");
+		dbg_assert(false, "Unhandled shape");
+		break;
 	}
 	return TouchPosition;
 }
@@ -234,7 +234,7 @@ bool CTouchControls::CTouchButton::IsInside(vec2 TouchPosition) const
 	case EButtonShape::CIRCLE:
 		return distance(TouchPosition, m_ScreenRect.Center()) <= minimum(m_ScreenRect.w, m_ScreenRect.h) / 2.0f;
 	default:
-		dbg_assert_failed("Unhandled shape");
+		dbg_assert(false, "Unhandled shape");
 		return false;
 	}
 }
@@ -302,7 +302,8 @@ void CTouchControls::CTouchButton::Render(std::optional<bool> Selected, std::opt
 		break;
 	}
 	default:
-		dbg_assert_failed("Unhandled shape");
+		dbg_assert(false, "Unhandled shape");
+		break;
 	}
 
 	const float FontSize = 22.0f;
@@ -395,7 +396,7 @@ void CTouchControls::CTouchButtonBehavior::SetActive(const IInput::CTouchFingerS
 	}
 	else
 	{
-		dbg_assert_failed("Touch button must be inactive or use same finger");
+		dbg_assert(false, "Touch button must be inactive or use same finger");
 	}
 }
 
@@ -501,7 +502,7 @@ void CTouchControls::CEmoticonTouchButtonBehavior::OnDeactivate(bool ByFinger)
 {
 	if(!ByFinger)
 		return;
-	m_pTouchControls->Console()->ExecuteLineStroked(1, "+emote", IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLineStroked(1, "+emote");
 }
 
 // Spectate button: keeps the spectate menu open, next touch in spectate menu will close it again.
@@ -514,7 +515,7 @@ void CTouchControls::CSpectateTouchButtonBehavior::OnDeactivate(bool ByFinger)
 {
 	if(!ByFinger)
 		return;
-	m_pTouchControls->Console()->ExecuteLineStroked(1, "+spectate", IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLineStroked(1, "+spectate");
 }
 
 // Swap action button:
@@ -538,7 +539,7 @@ void CTouchControls::CSwapActionTouchButtonBehavior::OnActivate()
 	if(m_pTouchControls->m_JoystickPressCount != 0)
 	{
 		m_ActiveAction = m_pTouchControls->NextActiveAction(m_pTouchControls->m_ActionSelected);
-		m_pTouchControls->Console()->ExecuteLineStroked(1, ACTION_COMMANDS[m_ActiveAction], IConsole::CLIENT_ID_UNSPECIFIED);
+		m_pTouchControls->Console()->ExecuteLineStroked(1, ACTION_COMMANDS[m_ActiveAction]);
 	}
 	else
 	{
@@ -550,7 +551,7 @@ void CTouchControls::CSwapActionTouchButtonBehavior::OnDeactivate(bool ByFinger)
 {
 	if(m_ActiveAction != NUM_ACTIONS)
 	{
-		m_pTouchControls->Console()->ExecuteLineStroked(0, ACTION_COMMANDS[m_ActiveAction], IConsole::CLIENT_ID_UNSPECIFIED);
+		m_pTouchControls->Console()->ExecuteLineStroked(0, ACTION_COMMANDS[m_ActiveAction]);
 		m_ActiveAction = NUM_ACTIONS;
 	}
 }
@@ -568,12 +569,12 @@ CTouchControls::CButtonLabel CTouchControls::CUseActionTouchButtonBehavior::GetL
 void CTouchControls::CUseActionTouchButtonBehavior::OnActivate()
 {
 	m_ActiveAction = m_pTouchControls->m_ActionSelected;
-	m_pTouchControls->Console()->ExecuteLineStroked(1, ACTION_COMMANDS[m_ActiveAction], IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLineStroked(1, ACTION_COMMANDS[m_ActiveAction]);
 }
 
 void CTouchControls::CUseActionTouchButtonBehavior::OnDeactivate(bool ByFinger)
 {
-	m_pTouchControls->Console()->ExecuteLineStroked(0, ACTION_COMMANDS[m_ActiveAction], IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLineStroked(0, ACTION_COMMANDS[m_ActiveAction]);
 	m_ActiveAction = NUM_ACTIONS;
 }
 
@@ -593,7 +594,7 @@ void CTouchControls::CJoystickTouchButtonBehavior::OnActivate()
 	OnUpdate();
 	if(m_ActiveAction != ACTION_AIM)
 	{
-		m_pTouchControls->Console()->ExecuteLineStroked(1, ACTION_COMMANDS[m_ActiveAction], IConsole::CLIENT_ID_UNSPECIFIED);
+		m_pTouchControls->Console()->ExecuteLineStroked(1, ACTION_COMMANDS[m_ActiveAction]);
 	}
 	m_pTouchControls->m_JoystickPressCount++;
 }
@@ -602,7 +603,7 @@ void CTouchControls::CJoystickTouchButtonBehavior::OnDeactivate(bool ByFinger)
 {
 	if(m_ActiveAction != ACTION_AIM)
 	{
-		m_pTouchControls->Console()->ExecuteLineStroked(0, ACTION_COMMANDS[m_ActiveAction], IConsole::CLIENT_ID_UNSPECIFIED);
+		m_pTouchControls->Console()->ExecuteLineStroked(0, ACTION_COMMANDS[m_ActiveAction]);
 	}
 	m_ActiveAction = NUM_ACTIONS;
 	m_pTouchControls->m_JoystickPressCount--;
@@ -616,7 +617,6 @@ void CTouchControls::CJoystickTouchButtonBehavior::OnUpdate()
 		vec2 WorldScreenSize;
 		m_pTouchControls->Graphics()->CalcScreenParams(m_pTouchControls->Graphics()->ScreenAspect(), m_pTouchControls->GameClient()->m_Camera.m_Zoom, &WorldScreenSize.x, &WorldScreenSize.y);
 		Controls.m_aMousePos[g_Config.m_ClDummy] += -m_AccumulatedDelta * WorldScreenSize;
-		Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::RELATIVE;
 		Controls.m_aMousePos[g_Config.m_ClDummy].x = std::clamp(Controls.m_aMousePos[g_Config.m_ClDummy].x, -201.0f * 32, (m_pTouchControls->Collision()->GetWidth() + 201.0f) * 32.0f);
 		Controls.m_aMousePos[g_Config.m_ClDummy].y = std::clamp(Controls.m_aMousePos[g_Config.m_ClDummy].y, -201.0f * 32, (m_pTouchControls->Collision()->GetHeight() + 201.0f) * 32.0f);
 		m_AccumulatedDelta = vec2(0.0f, 0.0f);
@@ -625,7 +625,6 @@ void CTouchControls::CJoystickTouchButtonBehavior::OnUpdate()
 	{
 		const vec2 AbsolutePosition = (m_ActivePosition - vec2(0.5f, 0.5f)) * 2.0f;
 		Controls.m_aMousePos[g_Config.m_ClDummy] = AbsolutePosition * (Controls.GetMaxMouseDistance() - Controls.GetMinMouseDistance()) + normalize(AbsolutePosition) * Controls.GetMinMouseDistance();
-		Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::ABSOLUTE;
 		if(length(Controls.m_aMousePos[g_Config.m_ClDummy]) < 0.001f)
 		{
 			Controls.m_aMousePos[g_Config.m_ClDummy].x = 0.001f;
@@ -671,13 +670,13 @@ CTouchControls::CButtonLabel CTouchControls::CBindTouchButtonBehavior::GetLabel(
 
 void CTouchControls::CBindTouchButtonBehavior::OnActivate()
 {
-	m_pTouchControls->Console()->ExecuteLineStroked(1, m_Command.c_str(), IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLineStroked(1, m_Command.c_str());
 	m_Repeating = false;
 }
 
 void CTouchControls::CBindTouchButtonBehavior::OnDeactivate(bool ByFinger)
 {
-	m_pTouchControls->Console()->ExecuteLineStroked(0, m_Command.c_str(), IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLineStroked(0, m_Command.c_str());
 }
 
 void CTouchControls::CBindTouchButtonBehavior::OnUpdate()
@@ -690,7 +689,7 @@ void CTouchControls::CBindTouchButtonBehavior::OnUpdate()
 		if(m_AccumulatedRepeatingTime >= BIND_REPEAT_RATE)
 		{
 			m_AccumulatedRepeatingTime -= BIND_REPEAT_RATE;
-			m_pTouchControls->Console()->ExecuteLineStroked(1, m_Command.c_str(), IConsole::CLIENT_ID_UNSPECIFIED);
+			m_pTouchControls->Console()->ExecuteLineStroked(1, m_Command.c_str());
 		}
 	}
 	else if(Now - m_ActivationStartTime >= BIND_REPEAT_INITIAL_DELAY)
@@ -725,7 +724,7 @@ CTouchControls::CButtonLabel CTouchControls::CBindToggleTouchButtonBehavior::Get
 
 void CTouchControls::CBindToggleTouchButtonBehavior::OnActivate()
 {
-	m_pTouchControls->Console()->ExecuteLine(m_vCommands[m_ActiveCommandIndex].m_Command.c_str(), IConsole::CLIENT_ID_UNSPECIFIED);
+	m_pTouchControls->Console()->ExecuteLine(m_vCommands[m_ActiveCommandIndex].m_Command.c_str());
 	m_ActiveCommandIndex = (m_ActiveCommandIndex + 1) % m_vCommands.size();
 }
 
@@ -936,7 +935,8 @@ int CTouchControls::NextActiveAction(int Action) const
 	case ACTION_HOOK:
 		return ACTION_FIRE;
 	default:
-		dbg_assert_failed("Action invalid for NextActiveAction");
+		dbg_assert(false, "Action invalid for NextActiveAction");
+		dbg_break();
 	}
 }
 
@@ -951,7 +951,8 @@ int CTouchControls::NextDirectTouchAction() const
 		case EDirectTouchSpectateMode::AIM:
 			return ACTION_AIM;
 		default:
-			dbg_assert_failed("m_DirectTouchSpectate invalid");
+			dbg_assert(false, "m_DirectTouchSpectate invalid");
+			return NUM_ACTIONS;
 		}
 	}
 	else
@@ -969,7 +970,8 @@ int CTouchControls::NextDirectTouchAction() const
 		case EDirectTouchIngameMode::HOOK:
 			return ACTION_HOOK;
 		default:
-			dbg_assert_failed("m_DirectTouchIngame invalid");
+			dbg_assert(false, "m_DirectTouchIngame invalid");
+			return NUM_ACTIONS;
 		}
 	}
 }
@@ -1026,7 +1028,7 @@ void CTouchControls::UpdateButtonsGame(const std::vector<IInput::CTouchFingerSta
 			m_aDirectTouchActionStates[Action].m_Active = false;
 			if(Action != ACTION_AIM)
 			{
-				Console()->ExecuteLineStroked(0, ACTION_COMMANDS[Action], IConsole::CLIENT_ID_UNSPECIFIED);
+				Console()->ExecuteLineStroked(0, ACTION_COMMANDS[Action]);
 			}
 		}
 		else
@@ -1159,21 +1161,19 @@ void CTouchControls::UpdateButtonsGame(const std::vector<IInput::CTouchFingerSta
 		if(GameClient()->m_Snap.m_SpecInfo.m_Active)
 		{
 			Controls.m_aMousePos[g_Config.m_ClDummy] += -DirectFingerState.m_Delta * WorldScreenSize;
-			Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::RELATIVE;
 			Controls.m_aMousePos[g_Config.m_ClDummy].x = std::clamp(Controls.m_aMousePos[g_Config.m_ClDummy].x, -201.0f * 32, (Collision()->GetWidth() + 201.0f) * 32.0f);
 			Controls.m_aMousePos[g_Config.m_ClDummy].y = std::clamp(Controls.m_aMousePos[g_Config.m_ClDummy].y, -201.0f * 32, (Collision()->GetHeight() + 201.0f) * 32.0f);
 		}
 		else
 		{
 			Controls.m_aMousePos[g_Config.m_ClDummy] = (DirectFingerState.m_Position - vec2(0.5f, 0.5f)) * WorldScreenSize;
-			Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::ABSOLUTE;
 		}
 	}
 
 	// Activate action after the mouse position is set.
 	if(ActivateAction != ACTION_AIM && ActivateAction != NUM_ACTIONS)
 	{
-		Console()->ExecuteLineStroked(1, ACTION_COMMANDS[ActivateAction], IConsole::CLIENT_ID_UNSPECIFIED);
+		Console()->ExecuteLineStroked(1, ACTION_COMMANDS[ActivateAction]);
 	}
 }
 
@@ -1882,16 +1882,15 @@ void CTouchControls::UpdateButtonsEditor(const std::vector<IInput::CTouchFingerS
 				// Update illegal position when Long press the button. Or later it will keep saying unsavedchanges.
 				if(IsRectOverlapping(TouchButton.m_UnitRect, TouchButton.m_Shape))
 				{
-					std::optional<CUnitRect> FreeRect = UpdatePosition(TouchButton.m_UnitRect, TouchButton.m_Shape);
+					TouchButton.m_UnitRect = UpdatePosition(TouchButton.m_UnitRect, TouchButton.m_Shape);
 					m_UnsavedChanges = true;
-					if(!FreeRect.has_value())
+					if(TouchButton.m_UnitRect.m_X == -1)
 					{
 						m_PopupParam.m_PopupType = EPopupType::NO_SPACE;
 						m_PopupParam.m_KeepMenuOpen = true;
 						GameClient()->m_Menus.SetActive(true);
 						return;
 					}
-					TouchButton.m_UnitRect = FreeRect.value();
 					TouchButton.UpdateScreenFromUnitRect();
 				}
 				m_aIssueParam[(int)EIssueType::CACHE_SETTINGS].m_pTargetButton = m_pSelectedButton;
@@ -1952,9 +1951,7 @@ void CTouchControls::UpdateButtonsEditor(const std::vector<IInput::CTouchFingerS
 			vec2 UnitXYDelta = m_ActiveFingerState->m_Delta * BUTTON_SIZE_SCALE;
 			m_pSampleButton->m_UnitRect.m_X += UnitXYDelta.x;
 			m_pSampleButton->m_UnitRect.m_Y += UnitXYDelta.y;
-			auto Hitbox = CalculateHitbox(m_pSampleButton->m_UnitRect, m_pSampleButton->m_Shape);
-			m_ShownRect = FindPositionXY(vVisibleButtonRects, Hitbox);
-			dbg_assert(m_ShownRect.has_value(), "Unexpected nullopt in m_ShownRect. Original rect: %d %d %d %d", Hitbox.m_X, Hitbox.m_Y, Hitbox.m_W, Hitbox.m_H);
+			m_ShownRect = FindPositionXY(vVisibleButtonRects, CalculateHitbox(m_pSampleButton->m_UnitRect, m_pSampleButton->m_Shape));
 			if(m_pSelectedButton != nullptr)
 			{
 				unsigned Movement = std::abs(m_pSelectedButton->m_UnitRect.m_X - m_ShownRect->m_X) + std::abs(m_pSelectedButton->m_UnitRect.m_Y - m_ShownRect->m_Y);
@@ -2019,9 +2016,7 @@ void CTouchControls::UpdateButtonsEditor(const std::vector<IInput::CTouchFingerS
 							 * Holding for long press while another finger is pressed.
 							 * Then it will instantly enter zoom mode while buttons are overlapping with each other.
 							 */
-							auto Hitbox = CalculateHitbox(m_pSampleButton->m_UnitRect, m_pSampleButton->m_Shape);
-							m_ShownRect = FindPositionXY(vVisibleButtonRects, Hitbox);
-							dbg_assert(m_ShownRect.has_value(), "Unexpected nullopt in m_ShownRect. Original rect: %d %d %d %d", Hitbox.m_X, Hitbox.m_Y, Hitbox.m_W, Hitbox.m_H);
+							m_ShownRect = FindPositionXY(vVisibleButtonRects, CalculateHitbox(m_pSampleButton->m_UnitRect, m_pSampleButton->m_Shape));
 							BiggestW = std::nullopt;
 							BiggestH = std::nullopt;
 							break;
@@ -2043,9 +2038,7 @@ void CTouchControls::UpdateButtonsEditor(const std::vector<IInput::CTouchFingerS
 		{
 			m_AccumulatedDelta = vec2(0.0f, 0.0f);
 			std::optional<CUnitRect> OldRect = m_ShownRect;
-			auto Hitbox = CalculateHitbox(m_pSampleButton->m_UnitRect, m_pSampleButton->m_Shape);
-			m_ShownRect = FindPositionXY(vVisibleButtonRects, Hitbox);
-			dbg_assert(m_ShownRect.has_value(), "Unexpected nullopt in m_ShownRect. Original rect: %d %d %d %d", Hitbox.m_X, Hitbox.m_Y, Hitbox.m_W, Hitbox.m_H);
+			m_ShownRect = FindPositionXY(vVisibleButtonRects, m_pSampleButton->m_UnitRect);
 			m_UnsavedChanges |= OldRect != m_ShownRect;
 			m_pSampleButton->m_UnitRect = (*m_ShownRect);
 			m_aIssueParam[(int)EIssueType::CACHE_POSITION].m_pTargetButton = m_pSampleButton.get();
@@ -2084,7 +2077,7 @@ void CTouchControls::RenderButtonsEditor()
 	}
 }
 
-std::optional<CTouchControls::CUnitRect> CTouchControls::FindPositionXY(std::vector<CUnitRect> &vVisibleButtonRects, CUnitRect MyRect)
+CTouchControls::CUnitRect CTouchControls::FindPositionXY(std::vector<CUnitRect> &vVisibleButtonRects, CUnitRect MyRect)
 {
 	// Border clamp
 	MyRect.m_X = std::clamp(MyRect.m_X, 0, BUTTON_SIZE_SCALE - MyRect.m_W);
@@ -2104,12 +2097,11 @@ std::optional<CTouchControls::CUnitRect> CTouchControls::FindPositionXY(std::vec
 		m_vLastUpdateRects = vVisibleButtonRects;
 		BuildPositionXY(m_vLastUpdateRects, MyRect);
 	}
-	std::optional<CUnitRect> Result;
-	CUnitRect SampleRect;
+	CUnitRect Result = {-1, -1, MyRect.m_W, MyRect.m_H}, SampleRect;
 	for(const ivec2 &Target : m_vTargets)
 	{
 		SampleRect = {Target.x, Target.y, MyRect.m_W, MyRect.m_H};
-		if(!Result.has_value() || MyRect.Distance(Result.value()) > MyRect.Distance(SampleRect))
+		if(Result.m_X == -1 || MyRect.Distance(Result) > MyRect.Distance(SampleRect))
 			Result = SampleRect;
 	}
 	int BestXPosition = -BUTTON_SIZE_SCALE, BestYPosition = -BUTTON_SIZE_SCALE, Cur = 0;
@@ -2160,13 +2152,13 @@ std::optional<CTouchControls::CUnitRect> CTouchControls::FindPositionXY(std::vec
 	if(BestXPosition != -BUTTON_SIZE_SCALE)
 	{
 		SampleRect = {BestXPosition, MyRect.m_Y, MyRect.m_W, MyRect.m_H};
-		if(!Result.has_value() || MyRect.Distance(Result.value()) > MyRect.Distance(SampleRect))
+		if(Result.m_X == -1 || MyRect.Distance(Result) > MyRect.Distance(SampleRect))
 			Result = SampleRect;
 	}
 	if(BestYPosition != -BUTTON_SIZE_SCALE)
 	{
 		SampleRect = {MyRect.m_X, BestYPosition, MyRect.m_W, MyRect.m_H};
-		if(!Result.has_value() || MyRect.Distance(Result.value()) > MyRect.Distance(SampleRect))
+		if(Result.m_X == -1 || MyRect.Distance(Result) > MyRect.Distance(SampleRect))
 			Result = SampleRect;
 	}
 	return Result;
@@ -2435,7 +2427,7 @@ bool CTouchControls::IsRectOverlapping(CUnitRect MyRect, EButtonShape Shape) con
 	return false;
 }
 
-std::optional<CTouchControls::CUnitRect> CTouchControls::UpdatePosition(CUnitRect MyRect, EButtonShape Shape, bool Ignore)
+CTouchControls::CUnitRect CTouchControls::UpdatePosition(CUnitRect MyRect, EButtonShape Shape, bool Ignore)
 {
 	MyRect = CalculateHitbox(MyRect, Shape);
 	std::vector<CUnitRect> vVisibleButtonRects;
