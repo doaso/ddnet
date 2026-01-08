@@ -422,6 +422,7 @@ private:
 	static void ConNo(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConBroadcastC(IConsole::IResult *pResult, void *pUserData);
+	static void ConCmdList(IConsole::IResult *pResult, void *pUserData);
 	static void ConCommands(IConsole::IResult *pResult, void *pUserData);
 	static void ConShop(IConsole::IResult *pResult, void *pUserData);
 

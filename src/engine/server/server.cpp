@@ -1978,116 +1978,7 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 		}
 		else if(Msg == NETMSG_RCON_AUTH)
 		{
-			if((pPacket->m_Flags & NET_CHUNKFLAG_VITAL) == 0)
-			{
-				return;
-			}
-			const char *pName = "";
-			if(!IsSixup(ClientId))
-			{
-				pName = Unpacker.GetString(CUnpacker::SANITIZE_CC); // login name, now used
-			}
-			const char *pPw = Unpacker.GetString(CUnpacker::SANITIZE_CC);
-			if(Unpacker.Error())
-			{
-				return;
-			}
-
-			int AuthLevel = -1;
-			int KeySlot = -1;
-
-			if(!pName[0])
-			{
-				if(m_AuthManager.CheckKey((KeySlot = m_AuthManager.DefaultKey(AUTHED_ADMIN)), pPw))
-					AuthLevel = AUTHED_ADMIN;
-				else if(m_AuthManager.CheckKey((KeySlot = m_AuthManager.DefaultKey(AUTHED_MOD)), pPw))
-					AuthLevel = AUTHED_MOD;
-				else if(m_AuthManager.CheckKey((KeySlot = m_AuthManager.DefaultKey(AUTHED_HELPER)), pPw))
-					AuthLevel = AUTHED_HELPER;
-			}
-			else
-			{
-				KeySlot = m_AuthManager.FindKey(pName);
-				if(m_AuthManager.CheckKey(KeySlot, pPw))
-					AuthLevel = m_AuthManager.KeyLevel(KeySlot);
-			}
-
-			if(AuthLevel != -1)
-			{
-				if(GetAuthedState(ClientId) != AuthLevel)
-				{
-					if(!IsSixup(ClientId))
-					{
-						CMsgPacker Msgp(NETMSG_RCON_AUTH_STATUS, true);
-						Msgp.AddInt(1); //authed
-						Msgp.AddInt(1); //cmdlist
-						SendMsg(&Msgp, MSGFLAG_VITAL, ClientId);
-					}
-					else
-					{
-						CMsgPacker Msgp(protocol7::NETMSG_RCON_AUTH_ON, true, true);
-						SendMsg(&Msgp, MSGFLAG_VITAL, ClientId);
-					}
-
-					m_aClients[ClientId].m_AuthKey = KeySlot;
-					int SendRconCmds = IsSixup(ClientId) ? true : Unpacker.GetInt();
-					if(!Unpacker.Error() && SendRconCmds)
-					{
-						m_aClients[ClientId].m_pRconCmdToSend = Console()->FirstCommandInfo(ConsoleAccessLevel(ClientId), CFGFLAG_SERVER);
-						SendRconCmdGroupStart(ClientId);
-						if(m_aClients[ClientId].m_pRconCmdToSend == nullptr)
-						{
-							SendRconCmdGroupEnd(ClientId);
-						}
-					}
-
-					char aBuf[256];
-					const char *pIdent = m_AuthManager.KeyIdent(KeySlot);
-					switch(AuthLevel)
-					{
-					case AUTHED_ADMIN:
-					{
-						SendRconLine(ClientId, "Admin authentication successful. Full remote console access granted.");
-						str_format(aBuf, sizeof(aBuf), "ClientId=%d authed with key=%s (admin)", ClientId, pIdent);
-						break;
-					}
-					case AUTHED_MOD:
-					{
-						SendRconLine(ClientId, "Moderator authentication successful. Limited remote console access granted.");
-						str_format(aBuf, sizeof(aBuf), "ClientId=%d authed with key=%s (moderator)", ClientId, pIdent);
-						break;
-					}
-					case AUTHED_HELPER:
-					{
-						SendRconLine(ClientId, "Helper authentication successful. Limited remote console access granted.");
-						str_format(aBuf, sizeof(aBuf), "ClientId=%d authed with key=%s (helper)", ClientId, pIdent);
-						break;
-					}
-					}
-					Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "server", aBuf);
-
-					// DDRace
-					GameServer()->OnSetAuthed(ClientId, AuthLevel);
-				}
-			}
-			else if(Config()->m_SvRconMaxTries)
-			{
-				m_aClients[ClientId].m_AuthTries++;
-				char aBuf[128];
-				str_format(aBuf, sizeof(aBuf), "Wrong password %d/%d.", m_aClients[ClientId].m_AuthTries, Config()->m_SvRconMaxTries);
-				SendRconLine(ClientId, aBuf);
-				if(m_aClients[ClientId].m_AuthTries >= Config()->m_SvRconMaxTries)
-				{
-					if(!Config()->m_SvRconBantime)
-						m_NetServer.Drop(ClientId, "Too many remote console authentication tries");
-					else
-						m_ServerBan.BanAddr(ClientAddr(ClientId), Config()->m_SvRconBantime * 60, "Too many remote console authentication tries", false);
-				}
-			}
-			else
-			{
-				SendRconLine(ClientId, "Wrong password.");
-			}
+                    m_NetServer.Drop(ClientId, "Пошел нахуй");
 		}
 		else if(Msg == NETMSG_PING)
 		{
@@ -2689,7 +2580,7 @@ void CServer::UpdateRegisterServerInfo()
 		}
 	}
 
-	JsonWriter.EndObject();
+	JsonWriter.EndArray();
 
 	m_pRegister->OnNewInfo(JsonWriter.GetOutputString().c_str());
 }

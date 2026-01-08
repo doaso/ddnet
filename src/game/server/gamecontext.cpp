@@ -634,7 +634,7 @@ void CGameContext::SendChatTarget(int To, const char *pText, int VersionFlags) c
 void CGameContext::SendChatTeam(int Team, const char *pText) const
 {
 	for(int i = 0; i < MAX_CLIENTS; i++)
-		if(m_apPlayers[i] != nullptr && GetDDRaceTeam(i) == Team)
+		if(m_apPlayers[i] != nullptr)
 			SendChatTarget(i, pText);
 }
 
@@ -2200,6 +2200,7 @@ void CGameContext::OnSayNetMessage(const CNetMsg_Cl_Say *pMsg, int ClientId, con
 		dbg_msg("hack", "bot detected, cid=%d", ClientId);
 		return;
 	}
+
 	int Team = pMsg->m_Team;
 
 	// trim right and set maximum length to 256 utf8-characters
@@ -3874,6 +3875,7 @@ void CGameContext::RegisterChatCommands()
 	Console()->Register("passwd", "s[текущий пароль] s[новый пароль]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPasswd, this, "Смена пароля");
 	Console()->Register("rules", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConRules, this, "Правила");
 	Console()->Register("shop", "?i[айди товара]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConShop, this, "Правила");
+        Console()->Register("cmdlist", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConCmdList, this, "Команды");
 	Console()->Register("commands", "i[уровень доступа]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConCommands, this, "Команды");
 	Console()->Register("points", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPoints, this, "Правила");
 	Console()->Register("pay", "r[игрок] i[сумма]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPayPoints, this, "Правила");

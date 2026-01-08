@@ -428,14 +428,29 @@ void CGameContext::ConRules(IConsole::IResult *pResult, void *pUserData) {
         )");
 }
 
-void CGameContext::ConCommands(IConsole::IResult *pResult, void *pUserData) {
+
+void CGameContext::ConCmdList(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
         if (!pSelf) {
             return;
         }
 
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-	if(!pPlayer) {
+            pSelf->SendMotd(pResult->m_ClientId, R"(Команды:
+/login - Авторизация в аккаунт
+/register - Зарегистрировать аккаунт
+/passwd - Поменять пароль от аккаунта
+/rules - Вывести правила
+/commands - Вывести команды по уровеню доступа
+/points - Вывести баланс
+/pay - Передать пойнты
+/shop - Магазин
+/orel или /reshka - Предложить сыграть в орел и решка
+            )");
+}
+
+void CGameContext::ConCommands(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+        if (!pSelf) {
             return;
         }
 

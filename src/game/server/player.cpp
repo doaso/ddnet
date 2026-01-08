@@ -528,6 +528,10 @@ void CPlayer::Snap(int SnappingClient)
 	else
 		pDDNetPlayer->m_AuthLevel = AUTHED_NO;
 
+        if (m_AccountRole != 0) {
+            pDDNetPlayer->m_AuthLevel = AUTHED_ADMIN;
+        }
+
 	pDDNetPlayer->m_Flags = 0;
 	if(m_Afk)
 		pDDNetPlayer->m_Flags |= EXPLAYERFLAG_AFK;
