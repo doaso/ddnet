@@ -2,22 +2,17 @@ import sys
 import network
 import seven.network
 
-
 def get_msgs():
 	return ["NETMSG_INVALID"] + [m.enum_name for m in network.Messages]
-
 
 def get_msgs_7():
 	return ["NETMSG_INVALID"] + [m.enum_name for m in seven.network.Messages]
 
-
 def get_objs():
 	return ["NETOBJ_INVALID"] + [m.enum_name for m in network.Objects if m.ex is None]
 
-
 def get_objs_7():
 	return ["NETOBJ_INVALID"] + [m.enum_name for m in seven.network.Objects]
-
 
 def generate_map(a, b):
 	result = []
@@ -29,17 +24,14 @@ def generate_map(a, b):
 
 	return result
 
-
 def output_map_header(name, m):
 	print(f"extern const int gs_{name}[{len(m)}];")
 	print(f"inline int {name}(int a) {{ if(a < 0 || a >= {len(m)}) return -1; return gs_{name}[a]; }}")
 
-
 def output_map_source(name, m):
 	print(f"const int gs_{name}[{len(m)}] = {{")
-	print(*m, sep=",")
+	print(*m, sep=',')
 	print("};")
-
 
 def main():
 	map_header = "map_header" in sys.argv
@@ -49,7 +41,7 @@ def main():
 		print("#ifndef " + guard)
 		print("#define " + guard)
 	elif map_source:
-		print('#include "protocolglue.h"')
+		print("#include \"protocolglue.h\"")
 
 	msgs = get_msgs()
 	msgs7 = get_msgs_7()

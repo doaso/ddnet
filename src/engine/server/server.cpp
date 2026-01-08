@@ -2689,7 +2689,6 @@ void CServer::UpdateRegisterServerInfo()
 		}
 	}
 
-	JsonWriter.EndArray();
 	JsonWriter.EndObject();
 
 	m_pRegister->OnNewInfo(JsonWriter.GetOutputString().c_str());

@@ -154,6 +154,9 @@ bool CSqliteConnection::ConnectImpl(char *pError, int ErrorSize)
 		FormatCreateRace(aBuf, sizeof(aBuf), /* Backup */ false);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
+		FormatCreateAccounts(aBuf, sizeof(aBuf), /* Backup */ false);
+		if(!Execute(aBuf, pError, ErrorSize))
+			return false;
 		FormatCreateTeamrace(aBuf, sizeof(aBuf), "BLOB", /* Backup */ false);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
@@ -168,6 +171,9 @@ bool CSqliteConnection::ConnectImpl(char *pError, int ErrorSize)
 			return false;
 
 		FormatCreateRace(aBuf, sizeof(aBuf), /* Backup */ true);
+		if(!Execute(aBuf, pError, ErrorSize))
+			return false;
+		FormatCreateAccounts(aBuf, sizeof(aBuf), /* Backup */ true);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
 		FormatCreateTeamrace(aBuf, sizeof(aBuf), "BLOB", /* Backup */ true);

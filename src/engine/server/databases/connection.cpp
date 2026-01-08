@@ -31,6 +31,21 @@ void IDbConnection::FormatCreateRace(char *aBuf, unsigned int BufferSize, bool B
 		BinaryCollate(), MAX_NAME_LENGTH_SQL, BinaryCollate());
 }
 
+void IDbConnection::FormatCreateAccounts(char *aBuf, unsigned int BufferSize, bool Backup) const
+{
+	str_format(aBuf, BufferSize,
+		"CREATE TABLE IF NOT EXISTS %s_accounts%s ("
+		"  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"  nickname TEXT, "
+		"  password TEXT, "
+		"  role INTEGER, "
+		"  points INTEGER, "
+		"  netadress TEXT"
+		")",
+		GetPrefix(), Backup ? "_backup" : "",
+		BinaryCollate(), MAX_NAME_LENGTH_SQL, BinaryCollate());
+}
+
 void IDbConnection::FormatCreateTeamrace(char *aBuf, unsigned int BufferSize, const char *pIdType, bool Backup) const
 {
 	str_format(aBuf, BufferSize,

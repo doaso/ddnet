@@ -1,8 +1,7 @@
-[![DDraceNetwork](https://ddnet.org/ddnet-small.png)](https://ddnet.org)
+[![DDraceNetwork](https://ddnet.org/ddnet-small.png)](https://ddnet.org) 
 
-[![Build status](https://github.com/ddnet/ddnet/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/ddnet/ddnet/actions/workflows/build.yml?branch=master)
-[![Code coverage](https://codecov.io/gh/ddnet/ddnet/branch/master/graph/badge.svg)](https://codecov.io/gh/ddnet/ddnet/branch/master)
-[![Translation status](https://hosted.weblate.org/widget/ddnet/ddnet/svg-badge.svg)](https://hosted.weblate.org/engage/ddnet/)
+[![](https://github.com/ddnet/ddnet/workflows/Build/badge.svg)](https://github.com/ddnet/ddnet/actions?query=workflow%3ABuild+event%3Apush+branch%3Amaster)
+[![](https://codecov.io/gh/ddnet/ddnet/branch/master/graph/badge.svg)](https://codecov.io/gh/ddnet/ddnet/branch/master)
 
 Our own flavor of DDRace, a Teeworlds mod. See the [website](https://ddnet.org) for more information.
 
@@ -121,7 +120,7 @@ The following is a non-exhaustive list of build arguments that can be passed to 
 	Whether to enable WebSocket support for server. Setting to ON requires the `libwebsockets-dev` library installed. Default value is OFF.
 
 * **-DMYSQL=[ON|OFF]** <br>
-	Whether to enable MySQL/MariaDB support for server. Requires at least MySQL 8.0 or MariaDB 10.2. Setting to ON requires the `libmariadb-dev-compat` library installed, which are also provided as bundled libraries for the common platforms. Default value is OFF.
+	Whether to enable MySQL/MariaDB support for server. Requires at least MySQL 8.0 or MariaDB 10.2. Setting to ON requires the `libmariadbclient-dev` library installed, which are also provided as bundled libraries for the common platforms. Default value is OFF.
 
 	Note that the bundled MySQL libraries might not work properly on your system. If you run into connection problems with the MySQL server, for example that it connects as root while you chose another user, make sure to install your system libraries for the MySQL client. Make sure that the CMake configuration summary says that it found MySQL libs that were not bundled (no "using bundled libs").
 
@@ -158,9 +157,9 @@ FLUSH PRIVILEGES;
 	Default value is OFF.
 
 * **-DVULKAN=[ON|OFF]** <br>
-	Whether to enable the Vulkan graphics backend.
-	You need to install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) and set the `VULKAN_SDK` environment flag accordingly.
-	Default value is ON for Linux, and OFF for Windows and macOS.
+	Whether to enable the vulkan backend.
+	On Windows you need to install the Vulkan SDK and set the `VULKAN_SDK` environment flag accordingly.
+	Default value is ON for Windows x86\_64 and Linux, and OFF for Windows x86 and macOS.
 
 * **-GNinja** <br>
 	Use the Ninja build system instead of Make. This automatically parallelizes the build and is generally faster. Compile with `ninja` instead of `make`. Install Ninja with `sudo apt install ninja-build` on Debian, `sudo pacman -S --needed ninja` on Arch Linux.
@@ -203,7 +202,20 @@ cmake --build build --target run_tests`
 
 ## Code formatting
 
-We use clang-format 20 to format the C++ code of this project. Execute `scripts/fix_style.py` after changing the code to ensure code is formatted properly, a GitHub central style checker will do the same and prevent your change from being submitted.
+We use clang-format 10 to format the C++ code of this project. Execute `scripts/fix_style.py` after changing the code to ensure code is formatted properly, a GitHub central style checker will do the same and prevent your change from being submitted.
+
+On Arch Linux you can install clang-format 10 using the [clang-format-static-bin AUR package](https://aur.archlinux.org/packages/clang-format-static-bin/) with [yay](https://github.com/Jguer/yay#Binary):
+
+```sh
+yay -S clang-format-static-bin
+```
+
+Or on macOS you can install clang-format 10 using a [homebrew tap](https://github.com/r-lib/homebrew-taps):
+
+```sh
+brew install r-lib/taps/clang-format@10
+sudo ln -s /opt/homebrew/Cellar/clang-format@10/10.0.1/bin/clang-format /opt/homebrew/bin/clang-format-10
+```
 
 ## Using AddressSanitizer + UndefinedBehaviourSanitizer or Valgrind's Memcheck
 
@@ -239,15 +251,9 @@ Now open up your Project folder, Visual Studio should automatically detect and c
 
 On your tools hotbar next to the triangular "Run" Button, you can now select what you want to start (e.g game-client or game-server) and build it.
 
-## Building on Windows with standalone MSVC build tools
+## Building on Windows with standalone MSVC build tools 
 
-First off you will need to install the following dependencies:
-
-- [MSVC Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/),
-- [Python 3](https://www.python.org/downloads/windows/),
-- [Rust](https://www.rust-lang.org/tools/install).
-
-To compile with the Vulkan graphics backend (disabled by default), you also need to install the [Vulkan SDK](https://vulkan.lunarg.com/sdk/home).
+First off you will need to install the MSVC [Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/), [Python 3](https://www.python.org/downloads/) as well as [Rust](https://www.rust-lang.org/tools/install).
 
 To compile and build DDNet on Windows, use your IDE of choice either with a CMake integration (e.g Visual Studio Code), or by ~~**deprecated**~~ using the CMake GUI.
 
@@ -255,7 +261,7 @@ Configure CMake to use the MSVC Build Tools appropriate to your System by your I
 
 If you're using Visual Studio Code, you can use the [CMake Tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools) extension to configure and build the project.
 
-You can then open the project folder in Visual Studio Code and press `Ctrl+Shift+P` to open the command palette, then search for `CMake: Configure`.
+You can then open the project folder in VSC and press `Ctrl+Shift+P` to open the command palette, then search for `CMake: Configure`
 
 This will open up a prompt for you to select a kit, select your `Visual Studio` version and save it. You can now use the GUI (bottom left) to compile and build your project.
 
@@ -278,31 +284,22 @@ Install Emscripten cross-compilers on a modern linux distro. Follow the [instruc
 If you need to compile the ddnet-libs for WebAssembly, simply call
 
 ```sh
-scripts/compile_libs/gen_libs.sh build-webasm-libs webasm
+# <directory to build in> should be a directory outside of the project's source directory
+scripts/compile_libs/gen_libs.sh "<directory to build in>" webasm
 ```
 
 from the project's source directory. It will automatically create a directory called `ddnet-libs` in your build directory.
-You can then merge this directory with the one in the ddnet source directory:
+You can then manually merge this directory with the one in the ddnet source directory.
 
-```sh
-find ddnet-libs -type d -name webasm -exec rm -r {} + -prune
-cp -r build-webasm-libs/ddnet-libs/. ddnet-libs/
-```
-
-Note that using Rust versions 1.90.0 - 1.93.0 does not work. Either use an older or newer version of Rust.
 Run `rustup target add wasm32-unknown-emscripten` to install the WASM target for compiling Rust.
 
-Create a new directory to build the client in.
-Then run `emcmake cmake .. -G "Unix Makefiles" -DVIDEORECORDER=OFF -DVULKAN=OFF -DSERVER=OFF -DTOOLS=OFF -DPREFER_BUNDLED_LIBS=ON` in your build directory to configure followed by `cmake --build . -j8` to build.
-For testing it is highly recommended to build in debug mode by also passing the argument `-DCMAKE_BUILD_TYPE=Debug` when invoking `emcmake cmake`, as this speeds up the build process and adds debug information as well as additional checks.
-Note that using the Ninja build system with Emscripten is not currently possible due to [CMake issue 16395](https://gitlab.kitware.com/cmake/cmake/-/issues/16395).
+Then run `emcmake cmake .. -G "Unix Makefiles" -DVIDEORECORDER=OFF -DVULKAN=OFF -DSERVER=OFF -DTOOLS=OFF -DPREFER_BUNDLED_LIBS=ON` in your build directory to configure followed by `cmake --build . -j8` to build. For testing it is highly recommended to build in debug mode by also passing the argument `-DCMAKE_BUILD_TYPE=Debug` when invoking `emcmake cmake`, as this speeds up the build process and adds debug information as well as additional checks. Note that using the Ninja build system with Emscripten is not currently possible due to [CMake issue 16395](https://gitlab.kitware.com/cmake/cmake/-/issues/16395).
 
-To test the compiled code locally, just use `emrun --browser firefox DDNet.html`.
+To test the compiled code locally, just use `emrun --browser firefox DDNet.html`
 
-To host the compiled .html file copy all `.data`, `.html`, `.js`, `.wasm` files to the web server.
-See `other/emscripten/minimal.html` for a minimal HTML example. You can also run `other/emscripten/server.py` to host a minimal server for testing using Python without needing to install Emscripten.
+To host the compiled .html file copy all `.data`, `.html`, `.js`, `.wasm` files to the web server. See `other/emscripten/minimal.html` for a minimal HTML example. You can also run `other/emscripten/server.py` to host a minimal server for testing using Python without needing to install Emscripten.
 
-Enable cross-origin policies when using a proper web server. Example for apache2 on Debian-based distros:
+Then enable cross origin policies. Example for apache2 on debian based distros:
 
 ```sh
 sudo a2enmod header
