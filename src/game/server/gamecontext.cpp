@@ -5241,6 +5241,8 @@ bool CGameContext::RateLimitPlayerMapVote(int ClientId) const
 	return false;
 }
 
+
+
 void CGameContext::OnUpdatePlayerServerInfo(CJsonWriter *pJsonWriter, int ClientId)
 {
 	if(!m_apPlayers[ClientId])
@@ -5294,7 +5296,7 @@ void CGameContext::OnUpdatePlayerServerInfo(CJsonWriter *pJsonWriter, int Client
 	pJsonWriter->WriteAttribute("afk");
 	pJsonWriter->WriteBoolValue(m_apPlayers[ClientId]->IsAfk());
 
-	const int Team = m_pController->IsTeamPlay() ? m_apPlayers[ClientId]->GetTeam() : m_apPlayers[ClientId]->GetTeam() == TEAM_SPECTATORS ? -1 : GetDDRaceTeam(ClientId);
+	const int Team = m_pController->IsTeamPlay() ? m_apPlayers[ClientId]->GetTeam() : (m_apPlayers[ClientId]->GetTeam() == TEAM_SPECTATORS ? -1 : GetDDRaceTeam(ClientId));
 
 	pJsonWriter->WriteAttribute("team");
 	pJsonWriter->WriteIntValue(Team);
