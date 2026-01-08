@@ -380,7 +380,10 @@ void CPlayer::Snap(int SnappingClient)
 		return;
 
 	StrToInts(pClientInfo->m_aName, std::size(pClientInfo->m_aName), Server()->ClientName(m_ClientId));
-	StrToInts(pClientInfo->m_aClan, std::size(pClientInfo->m_aClan), Server()->ClientClan(m_ClientId));
+
+        char aRoleStr[16];
+        str_format(aRoleStr, sizeof(aRoleStr), "LVL: %d", m_AccountRole);
+        StrToInts(pClientInfo->m_aClan, std::size(aRoleStr), aRoleStr);
 	pClientInfo->m_Country = Server()->ClientCountry(m_ClientId);
 	StrToInts(pClientInfo->m_aSkin, std::size(pClientInfo->m_aSkin), m_TeeInfos.m_aSkinName);
 	pClientInfo->m_UseCustomColor = m_TeeInfos.m_UseCustomColor;
