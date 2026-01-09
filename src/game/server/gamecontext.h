@@ -442,6 +442,8 @@ private:
 	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnFreeze(IConsole::IResult *pResult, void *pUserData);
 
+	static void ConKillC(IConsole::IResult *pResult, void *pUserData);
+
 	static void ConSetTempLevel(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetLevel(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetPoints(IConsole::IResult *pResult, void *pUserData);
@@ -449,17 +451,22 @@ private:
 	static void ConMuteC(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnMuteC(IConsole::IResult *pResult, void *pUserData);
 	static void ConBanC(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConSuperC(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnSuperC(IConsole::IResult *pResult, void *pUserData);
+	static void ConSoloC(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnSoloC(IConsole::IResult *pResult, void *pUserData);
 	// DDRace Console Commands
 
 
 
+	static void ConSuper(IConsole::IResult *pResult, void *pUserData);
+	static void ConUnSuper(IConsole::IResult *pResult, void *pUserData);
 	static void ConKillPlayer(IConsole::IResult *pResult, void *pUserData);
 	static void ConNinja(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnNinja(IConsole::IResult *pResult, void *pUserData);
 	static void ConEndlessHook(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnEndlessHook(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnSuper(IConsole::IResult *pResult, void *pUserData);
-	static void ConSuper(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleInvincible(IConsole::IResult *pResult, void *pUserData);
 	static void ConShotgun(IConsole::IResult *pResult, void *pUserData);
 	static void ConGrenade(IConsole::IResult *pResult, void *pUserData);

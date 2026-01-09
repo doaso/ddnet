@@ -36,12 +36,11 @@ void CGameContext::ConGiveGun(IConsole::IResult *pResult, void *pUserData)
             return;
         }
 
-        if (pPlayer->m_AccountRole < 1) {
+        if (pPlayer->m_AccountRole < 2) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
 
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выдали себе оружие");
         ConAddWeapon(pResult, pUserData);
 }
 
@@ -63,13 +62,12 @@ void CGameContext::ConEffect(IConsole::IResult *pResult, void *pUserData)
             return;
         }
 
-        if (pPlayer->m_AccountRole < 1) {
+        if (pPlayer->m_AccountRole < 2) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
 
         pPlayer->m_Effect = pResult->GetInteger(0);
-        // pSelf->SendChatTarget(pPlayer->GetCid(), "Вы установи эффект");
 }
 
 
@@ -95,7 +93,6 @@ void CGameContext::ConInfhook(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetEndlessHook(true);
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили бесконечный хук");
 }
 
 
@@ -121,7 +118,6 @@ void CGameContext::ConJetpackC(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetJetpack(true);
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили джетпак");
 }
 
 void CGameContext::ConUnJetpackC(IConsole::IResult *pResult, void *pUserData) {
@@ -146,7 +142,6 @@ void CGameContext::ConUnJetpackC(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetJetpack(false);
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили джетпак");
 }
 
 void CGameContext::ConUnInfhook(IConsole::IResult *pResult, void *pUserData) {
@@ -171,7 +166,6 @@ void CGameContext::ConUnInfhook(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetEndlessHook(false);
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили бесконечный хук");
 }
 
 void CGameContext::ConInfjump(IConsole::IResult *pResult, void *pUserData) {
@@ -196,7 +190,6 @@ void CGameContext::ConInfjump(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetEndlessJump(true);
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили бесконечные прыжки");
 }
 
 void CGameContext::ConUnInfjump(IConsole::IResult *pResult, void *pUserData) {
@@ -221,7 +214,6 @@ void CGameContext::ConUnInfjump(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetEndlessJump(false);
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили бесконечные прыжки");
 }
 
 void CGameContext::ConLogin(IConsole::IResult *pResult, void *pUserData) {
@@ -468,40 +460,48 @@ void CGameContext::ConACmdList(IConsole::IResult *pResult, void *pUserData) {
 
         if (pResult->GetInteger(0) == 1) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 1-го уровня доступа:
-/effect - Установить эффект
-/infjump - Включить бескоенчные прыжки
+/infjump - Включить бесконечные прыжки
 /uninfjump - Выключить бесконечные прыжки
 /infhook - Включить бесконечный хук
 /uninfhook - Выключить бесконечный хук
 /jetpack - Включить джетпак
 /unjetpack - Выключить джетпак
-/givegun - Выдать себе оружие
             )");       
         } else if (pResult->GetInteger(0) == 2) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 2-го уровня доступа:
-/goto - Телепортироваться к игроку
-/gethere - Телепортировать игрока к себе
-/tpspec - Включить телепорт в режиме наблюдателя 
-/untpspec - Выключить телепорт в режиме наблюдателя
-/freeze - Заморозить игрока
-/unfreeze - Разморозить игрока
+/effect - Включить эффекты
+/givegun - Выдать оружие
+/solo - Включить соло
+/unsolo - Выключить соло
             )");       
         } else if (pResult->GetInteger(0) == 3) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 3-го уровня доступа:
-/stats - Посмотреть статистику игрока
-/broadcast - Выводит сообщение на весь сервер
-/mute - Заблокировать чат игроку
-/unmute - Разаблокировать чат игроку
-/kick - Кикнуть игрока
+/goto - Телепортироваться к игроку
+/gethere - Телепортировать игрока к себе
             )");       
         } else if (pResult->GetInteger(0) == 4) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 4-го уровня доступа:
+/broadcast - Вывести сообщение на весь сервер
 /vanis - Включить ваниш
 /unvanis - Выключить ваниш
-/ban - Заблокировать игрока
+/freeze - Заморозить игрока
+/unfreeze - Разморозить игрока
+/kill - Убить игрока
+/god - Включить бессмертие
+/ungod - Выключить бессмертие
             )");
         } else if (pResult->GetInteger(0) == 5) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 5-го уровня доступа:
+/stats - Посмотреть статистику игрока
+/tpspec - Включить телепорт в режиме наблюдателя 
+/untpspec - Выключить телепорт в режиме наблюдателя
+/mute - Заблокировать чат игроку
+/unmute - Разаблокировать чат игроку
+/kick - Кикнуть игрока
+            )");
+        } else if (pResult->GetInteger(0) == 6) {
+             pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 6-го уровня доступа:
+/ban - Заблокировать игрока
 /setpoints - Установить пойнты
 /setlevel - Установить постоянный уровень доступа
 /settemplevel - Установить временный уровень доступа
@@ -520,7 +520,7 @@ void CGameContext::ConBroadcastC(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 3) {
+        if (pPlayer->m_AccountRole < 4) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -539,7 +539,7 @@ void CGameContext::ConSetLevel(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 5) {
+        if (pPlayer->m_AccountRole < 6) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -574,10 +574,12 @@ void CGameContext::ConSetLevel(IConsole::IResult *pResult, void *pUserData) {
         int AccountRole = pResult->GetInteger(1);
         pPlayerTarget->m_AccountRole = AccountRole;
         pSelf->Score()->ChangeRoleAccount(pResult->GetString(0), AccountRole);
-        str_format(aBuf, sizeof(aBuf), "Вы установили %s постоянный %i уровень доступа", pResult->GetString(0), AccountRole);
-        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам постоянный %i уровень доступа\nИспользуйте /acmdlist что-бы посмотреть ваши команды", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
-        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил %s постоянный %i уровень доступа",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), AccountRole);
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), "Используйте /acmdlist что-бы посмотреть ваши команды");
 }
 
 
@@ -592,7 +594,7 @@ void CGameContext::ConSetPoints(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 5) {
+        if (pPlayer->m_AccountRole < 6) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -627,10 +629,10 @@ void CGameContext::ConSetPoints(IConsole::IResult *pResult, void *pUserData) {
         int AccountPoints = pResult->GetInteger(1);
         pPlayerTarget->m_AccountPoints = AccountPoints;
         pSelf->Score()->ChangePointsAccount(pResult->GetString(0), AccountPoints);
-        str_format(aBuf, sizeof(aBuf), "Вы установили %s %i пойнтов", pResult->GetString(0), AccountPoints);
-        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам %i пойнтов", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountPoints);
-        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил %s %i пойнтов",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), AccountPoints);
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
 }
 
 void CGameContext::ConSetTempLevel(IConsole::IResult *pResult, void *pUserData) {
@@ -644,7 +646,7 @@ void CGameContext::ConSetTempLevel(IConsole::IResult *pResult, void *pUserData) 
             return;
         }
 
-        if (pPlayer->m_AccountRole < 5) {
+        if (pPlayer->m_AccountRole < 6) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -673,10 +675,11 @@ void CGameContext::ConSetTempLevel(IConsole::IResult *pResult, void *pUserData) 
 
         int AccountRole = pResult->GetInteger(1);
         pPlayerTarget->m_AccountRole = AccountRole;
-        str_format(aBuf, sizeof(aBuf), "Вы установили %s врмеменный %i уровень доступа", pResult->GetString(0), AccountRole);
-        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам врмеменный %i уровень доступа\nИспользуйте /acmdlist что-бы посмотреть ваши команды", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
-        pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил %s временный %i уровень доступа",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0), AccountRole);
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+
+        pSelf->SendChatTarget(pPlayerTarget->GetCid(), "Используйте /acmdlist что-бы посмотреть ваши команды");
 }
 
 void CGameContext::ConUnMuteC(IConsole::IResult *pResult, void *pUserData) {
@@ -690,7 +693,7 @@ void CGameContext::ConUnMuteC(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 3) {
+        if (pPlayer->m_AccountRole < 5) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -742,7 +745,7 @@ void CGameContext::ConMuteC(IConsole::IResult *pResult, void *pUserData) {
             return;            
         }
 
-        if (pPlayer->m_AccountRole < 3) {
+        if (pPlayer->m_AccountRole < 5) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -786,7 +789,7 @@ void CGameContext::ConKickC(IConsole::IResult *pResult, void *pUserData) {
             return;            
         }
 
-        if (pPlayer->m_AccountRole < 3) {
+        if (pPlayer->m_AccountRole < 5) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -830,7 +833,7 @@ void CGameContext::ConBanC(IConsole::IResult *pResult, void *pUserData) {
             return;            
         }
 
-        if (pPlayer->m_AccountRole < 4) {
+        if (pPlayer->m_AccountRole < 6) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -874,7 +877,7 @@ void CGameContext::ConGetHere(IConsole::IResult *pResult, void *pUserData) {
             return;            
         }
 
-        if (pPlayer->m_AccountRole < 2) {
+        if (pPlayer->m_AccountRole < 3) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -913,8 +916,6 @@ void CGameContext::ConGetHere(IConsole::IResult *pResult, void *pUserData) {
 	pChrTarget->UnFreeze();
 	pChrTarget->ResetVelocity();
 
-        str_format(aBuf, sizeof(aBuf), "Вы телепортировали %s", pResult->GetString(0));
-        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
         str_format(aBuf, sizeof(aBuf), "Вы были телепортированы администратором %s", pSelf->Server()->ClientName(pPlayer->GetCid()));
         pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
         pSelf->CreateSound(pChrTarget->m_Pos, SOUND_PLAYER_DIE);
@@ -922,7 +923,8 @@ void CGameContext::ConGetHere(IConsole::IResult *pResult, void *pUserData) {
 	// pPlayerTarget->m_LastTeleTee.Save(pChrTarget);
 }
 
-void CGameContext::ConUnFreeze(IConsole::IResult *pResult, void *pUserData) {
+
+void CGameContext::ConKillC(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
 	if(!CheckClientId(pResult->m_ClientId)) {
             return;
@@ -933,7 +935,7 @@ void CGameContext::ConUnFreeze(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 2) {
+        if (pPlayer->m_AccountRole < 4) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -965,12 +967,60 @@ void CGameContext::ConUnFreeze(IConsole::IResult *pResult, void *pUserData) {
         if(!pChrTarget)
             return;
 
-        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) != 0) {
-            str_format(aBuf, sizeof(aBuf), "Вы разморозили %s", pResult->GetString(0));
-            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-            str_format(aBuf, sizeof(aBuf), "Администратор %s разморозил вас", pSelf->Server()->ClientName(pPlayer->GetCid()));
-            pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s убил %s",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
+
+        pChrTarget->Die(ClientId, WEAPON_SELF, false);
+        pChrTarget->UnFreeze();
+}
+
+void CGameContext::ConUnFreeze(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
         }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 4) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        int ClientId = 0;
+        for(ClientId = 0; ClientId < MAX_CLIENTS; ClientId = ClientId + 1) {
+            if(str_comp(pResult->GetString(0), pSelf->Server()->ClientName(ClientId)) == 0)
+                break;
+        }
+
+        char aBuf[255];
+
+        if(ClientId == MAX_CLIENTS) {
+            str_format(aBuf, sizeof(aBuf), "Игрок %s не найден", pResult->GetString(0));
+            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
+            return;
+        }
+
+        CPlayer *pPlayerTarget = pSelf->m_apPlayers[ClientId];
+        if(!pPlayerTarget)
+            return;
+
+        CCharacter *pChrTarget = pPlayerTarget->GetCharacter();
+        if(!pChrTarget)
+            return;
+
+        str_format(aBuf, sizeof(aBuf), "Администратор %s разморозил %s",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
 
         pChrTarget->SetDeepFrozen(false);
         pChrTarget->UnFreeze();
@@ -987,7 +1037,7 @@ void CGameContext::ConFreeze(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 2) {
+        if (pPlayer->m_AccountRole < 4) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -1019,19 +1069,13 @@ void CGameContext::ConFreeze(IConsole::IResult *pResult, void *pUserData) {
         if(!pChrTarget)
             return;
 
-
-        if (str_comp(pSelf->Server()->ClientName(pPlayer->GetCid()), pResult->GetString(0)) != 0) {
-            str_format(aBuf, sizeof(aBuf), "Вы заморозили %s", pResult->GetString(0));
-            pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-            str_format(aBuf, sizeof(aBuf), "Администратор %s заморозил вас", pSelf->Server()->ClientName(pPlayer->GetCid()));
-            pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
-        }
-
+        str_format(aBuf, sizeof(aBuf), "Администратор %s заморозил %s",
+                   pSelf->Server()->ClientName(pResult->m_ClientId), pResult->GetString(0));
+        pSelf->SendChat(-1, TEAM_ALL, aBuf);
         pChrTarget->SetDeepFrozen(true);
 }
 
-
-void CGameContext::ConTpSpec(IConsole::IResult *pResult, void *pUserData) {
+void CGameContext::ConSoloC(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
 	if(!CheckClientId(pResult->m_ClientId)) {
             return;
@@ -1047,8 +1091,103 @@ void CGameContext::ConTpSpec(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetSolo(true);
+}
+
+void CGameContext::ConUnSoloC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 2) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetSolo(false);
+}
+
+void CGameContext::ConSuperC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 4) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetSuper(true);
+}
+
+void CGameContext::ConUnSuperC(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 4) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        pChr->SetSuper(false);
+}
+
+void CGameContext::ConTpSpec(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 5) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
         pPlayer->m_IsTpSpec = true;
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы включили телепорт в режиме наблюдателя");
 }
 
 void CGameContext::ConUnTpSpec(IConsole::IResult *pResult, void *pUserData) {
@@ -1062,13 +1201,12 @@ void CGameContext::ConUnTpSpec(IConsole::IResult *pResult, void *pUserData) {
             return;
         }
 
-        if (pPlayer->m_AccountRole < 2) {
+        if (pPlayer->m_AccountRole < 5) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
 
         pPlayer->m_IsTpSpec = false;
-        pSelf->SendChatTarget(pPlayer->GetCid(), "Вы выключили телепорт в режиме наблюдателя");
 }
 
 void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) {
@@ -1086,7 +1224,7 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) {
             return;            
         }
 
-        if (pPlayer->m_AccountRole < 2) {
+        if (pPlayer->m_AccountRole < 3) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }
@@ -1125,8 +1263,6 @@ void CGameContext::ConGoto(IConsole::IResult *pResult, void *pUserData) {
 	pChrTarget->UnFreeze();
 	pChrTarget->ResetVelocity();
 
-        str_format(aBuf, sizeof(aBuf), "Вы телепортировались к %s", pResult->GetString(0));
-        pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
         str_format(aBuf, sizeof(aBuf), "К вам телепортировался администратор %s", pSelf->Server()->ClientName(pPlayer->GetCid()));
         pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
         pSelf->CreateSound(pChr->m_Pos, SOUND_PLAYER_DIE);
@@ -2543,7 +2679,7 @@ void CGameContext::ConStats(IConsole::IResult *pResult, void *pUserData)
 	if(!pPlayer)
 		return;
 
-        if (pPlayer->m_AccountRole < 3) {
+        if (pPlayer->m_AccountRole < 5) {
             pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
             return;
         }

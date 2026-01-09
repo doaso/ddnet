@@ -3819,8 +3819,6 @@ void CGameContext::RegisterDDRaceCommands()
 	Console()->Register("unweapons", "", CFGFLAG_SERVER | CMDFLAG_TEST, ConUnWeapons, this, "Removes all weapons from you");
 	Console()->Register("ninja", "", CFGFLAG_SERVER | CMDFLAG_TEST, ConNinja, this, "Makes you a ninja");
 	Console()->Register("unninja", "", CFGFLAG_SERVER | CMDFLAG_TEST, ConUnNinja, this, "Removes ninja from you");
-	Console()->Register("super", "", CFGFLAG_SERVER | CMDFLAG_TEST, ConSuper, this, "Makes you super");
-	Console()->Register("unsuper", "", CFGFLAG_SERVER, ConUnSuper, this, "Removes super from you");
 	Console()->Register("invincible", "?i['0'|'1']", CFGFLAG_SERVER | CMDFLAG_TEST, ConToggleInvincible, this, "Toggles invincible mode");
 	Console()->Register("infinite_jump", "", CFGFLAG_SERVER | CMDFLAG_TEST, ConEndlessJump, this, "Gives you infinite jump");
 	Console()->Register("uninfinite_jump", "", CFGFLAG_SERVER | CMDFLAG_TEST, ConUnEndlessJump, this, "Removes infinite jump from you");
@@ -3904,8 +3902,15 @@ void CGameContext::RegisterChatCommands()
 	Console()->Register("freeze", "r[игрок]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConFreeze, this, "Заморозить игрока");
 	Console()->Register("unfreeze", "r[игрок]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConUnFreeze, this, "Разморозить игрока");
 
+	Console()->Register("kill", "r[игрок]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConKillC, this, "Убить игрока");
+
         Console()->Register("tpspec", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConTpSpec, this, "Телепортирует вас к игроку");
         Console()->Register("untpspec", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConUnTpSpec, this, "Телепортирует вас к игроку");
+
+        Console()->Register("god", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConSuperC, this, "");
+        Console()->Register("ungod", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConUnSuperC, this, "");
+        Console()->Register("solo", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConSoloC, this, "");
+        Console()->Register("unsolo", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConUnSoloC, this, "");
 
         Console()->Register("setpoints", "r[игрок] i[пойнты]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConSetPoints, this, "Ставит постоянный уровень доступа");
         Console()->Register("settemplevel", "r[игрок] i[уровень доступа]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConSetTempLevel, this, "Ставит временный уровень доступа");

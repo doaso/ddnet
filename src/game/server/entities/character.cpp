@@ -177,21 +177,10 @@ void CCharacter::SetSolo(bool Solo)
 void CCharacter::SetSuper(bool Super)
 {
 	// Disable invincible mode before activating super mode. Both modes active at the same time wouldn't necessarily break anything but it's not useful.
-	if(Super)
-		SetInvincible(false);
+	// if(Super)
+		// SetInvincible(false);
 
-	bool WasSuper = m_Core.m_Super;
 	m_Core.m_Super = Super;
-	if(Super && !WasSuper)
-	{
-		m_TeamBeforeSuper = Team();
-		Teams()->SetCharacterTeam(GetPlayer()->GetCid(), TEAM_SUPER);
-		m_DDRaceState = ERaceState::CHEATED;
-	}
-	else if(!Super && WasSuper)
-	{
-		Teams()->SetForceCharacterTeam(GetPlayer()->GetCid(), m_TeamBeforeSuper);
-	}
 }
 
 void CCharacter::SetInvincible(bool Invincible)
@@ -1030,6 +1019,10 @@ void CCharacter::Die(int Killer, int Weapon, bool SendKillMsg)
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 {
+        if (IsSuper() == true) {
+            return false;
+        }
+
 	if(Dmg)
 	{
 		SetEmote(EMOTE_PAIN, Server()->Tick() + 500 * Server()->TickSpeed() / 1000);
