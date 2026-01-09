@@ -531,7 +531,7 @@ void CPlayer::Snap(int SnappingClient)
 	else
 		pDDNetPlayer->m_AuthLevel = AUTHED_NO;
 
-        if (m_AccountRole != 0) {
+        if (m_AccountRole >= 3) {
             pDDNetPlayer->m_AuthLevel = AUTHED_ADMIN;
         }
 

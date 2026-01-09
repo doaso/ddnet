@@ -2196,12 +2196,12 @@ void CGameContext::OnSayNetMessage(const CNetMsg_Cl_Say *pMsg, int ClientId, con
 		if(strncmp(pText, "/login", 6) != 0 && strncmp(pText, "/register", 9) != 0)
 		{
                         // if (!pPlayer->m_IsHaveAccount) {
-                            // SendChatTarget(ClientId, "Ваш аккаунт не зарегистрирован. Чтобы продолжить игру на сервере, зарегистрируйте его, используя команду /register");
+                            // SendChatTarget(ClientId, "Вы не можете писать в чат.");
                         // } else {
                             // SendChatTarget(ClientId, "Ваш аккаунт зарегистрирован. Чтобы продолжить игру на сервере, войдите, используя команду /login");
                         // }
-                //
-                        // SendChatTarget(ClientId, "Ваш аккаунт зарегистрирован. Чтобы продолжить игру на сервере, войдите, используя команду /login");
+
+                        SendChatTarget(ClientId, "Вы не можете писать в чат. Авторизируйтесь или зарегистрируйтесь что-бы продолжить игру на сервере.");
 			return;
 		}
 	}
