@@ -69,7 +69,6 @@ void CGameContext::ConDropGun(IConsole::IResult *pResult, void *pUserData)
 	vec2 Pos = pChr->m_Pos;
         pSelf->CreateWeaponPickup(Pos, ActiveWepapon);
         pSelf->ModifyWeapons(pResult, pUserData, ActiveWepapon, true);
-        pChr->SetActiveWeapon(WEAPON_HAMMER);
 }
 
 void CGameContext::ConEffect(IConsole::IResult *pResult, void *pUserData)
@@ -374,13 +373,17 @@ void CGameContext::ConShop(IConsole::IResult *pResult, void *pUserData)
         const char *ItemName = "";
 
         switch (ItemID) {
-        case 1: Price = 100;  ItemName = "Нинзя"; break;
-        case 2: Price = 250;  ItemName = "Эффект Хаммер-дробовик"; break;
-        case 3: Price = 250;  ItemName = "Эффект Хаммер-лазер"; break;
-        case 4: Price = 500;  ItemName = "Эффект Хеппи-бердей"; break;
-        case 5: Price = 750;  ItemName = "Эффект Админ ауры"; break;
+        case 1: Price = 25; ItemName = "Дробовик"; break;
+        case 2: Price = 25; ItemName = "Рокет"; break;
+        case 3: Price = 1500; ItemName = "Лазер"; break;
+        case 4: Price = 100;  ItemName = "Нинзя"; break;
+        case 5: Price = 2000;  ItemName = "Эффект Смерти"; break;
         case 6: Price = 500;  ItemName = "Эффект Огненной ауры"; break;
-        case 7: Price = 1500;  ItemName = "Эффект Смерти"; break;
+        case 7: Price = 750;  ItemName = "Эффект Хеппи-бердей"; break;
+        case 8: Price = 1500;  ItemName = "Эффект Админ ауры"; break;
+        case 9: Price = 750;  ItemName = "Эффект Хаммер-дробовик"; break;
+        case 10: Price = 9999;  ItemName = "Эффект Хаммер-лазер"; break;
+
         default:
             pSelf->SendChatTarget(pPlayer->GetCid(), "Неверный номер предмета");
             return;
@@ -395,13 +398,16 @@ void CGameContext::ConShop(IConsole::IResult *pResult, void *pUserData)
         pSelf->Score()->ChangePointsAccount(pSelf->Server()->ClientName(pPlayer->GetCid()), pPlayer->m_AccountPoints);
 
         switch (ItemID) {
-        case 1: pSelf->ModifyWeapons(pResult, pUserData, 5, false); break;
-        case 2: pPlayer->m_Effect = 5; break;
-        case 3: pPlayer->m_Effect = 6; break;
-        case 4: pPlayer->m_Effect = 3; break;
-        case 5: pPlayer->m_Effect = 4; break;
-        case 6: pPlayer->m_Effect = 2; break;
-        case 7: pPlayer->m_Effect = 1; break;
+            case 1: pSelf->ModifyWeapons(pResult, pUserData, 2, false); break;
+            case 2: pSelf->ModifyWeapons(pResult, pUserData, 3, false); break;
+            case 3: pSelf->ModifyWeapons(pResult, pUserData, 4, false); break;
+            case 4: pSelf->ModifyWeapons(pResult, pUserData, 5, false); break;
+            case 5: pPlayer->m_Effect = 1; break;
+            case 6: pPlayer->m_Effect = 2; break;
+            case 7: pPlayer->m_Effect = 3; break;
+            case 8: pPlayer->m_Effect = 4; break;
+            case 9: pPlayer->m_Effect = 5; break;
+            case 10: pPlayer->m_Effect = 6; break;
         }
 
 
@@ -415,13 +421,16 @@ void CGameContext::ConShop(IConsole::IResult *pResult, void *pUserData)
 
         struct ItemInfo { int ID; const char *Name; int Price; };
         ItemInfo Items[] = {
-            {1, "Нинзя", 100},
-            {2, "Эффект Хаммер-дробовик", 250},
-            {3, "Эффект Хаммер-лазер", 250},
-            {4, "Эффект Хеппи-бердей", 500},
-            {5, "Эффект Админ ауры", 750},
+            {1, "Дробовик", 25},
+            {2, "Рокет", 25},
+            {3, "Лазер", 1500},
+            {4, "Нинзя", 100},
+            {5, "Эффект Смерти", 2000},
             {6, "Эффект Огненной ауры", 500},
-            {7, "Эффект Смерти", 1500},
+            {7, "Эффект Хеппи-бердей", 750},
+            {8, "Эффект Админ ауры", 1500},
+            {9, "Эффект Хаммер-дробовик", 750},
+            {10, "Эффект Хаммер-лазер", 9999},
         };
 
         for (const auto &It : Items) {

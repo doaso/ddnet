@@ -597,7 +597,7 @@ void CCharacter::FireWeapon()
 
 	case WEAPON_LASER:
 	{
-		float LaserReach = GetTuning(m_TuneZone)->m_LaserReach * 50;
+		float LaserReach = GetTuning(m_TuneZone)->m_LaserReach;
 
 		new CLaser(GameWorld(), m_Pos, Direction, LaserReach, m_pPlayer->GetCid(), WEAPON_LASER);
 		GameServer()->CreateSound(m_Pos, SOUND_LASER_FIRE, TeamMask()); // NOLINT(clang-analyzer-unix.Malloc)
