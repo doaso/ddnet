@@ -270,6 +270,7 @@ public:
 	CVoteOptionServer *m_pVoteOptionLast;
 
 	// helper functions
+        void CreateWeaponPickup(vec2 Pos, int Weapon);
 	void CreateDamageInd(vec2 Pos, float AngleMod, int Amount, CClientMask Mask = CClientMask().set());
 	void CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamage, int ActivatedTeam, CClientMask Mask = CClientMask().set());
 	void CreateHammerHit(vec2 Pos, CClientMask Mask = CClientMask().set());
@@ -428,7 +429,10 @@ private:
 
 	static void ConUnJetpackC(IConsole::IResult *pResult, void *pUserData);
 	static void ConJetpackC(IConsole::IResult *pResult, void *pUserData);
+
 	static void ConGiveGun(IConsole::IResult *pResult, void *pUserData);
+	static void ConDropGun(IConsole::IResult *pResult, void *pUserData);
+
 	static void ConInfjump(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnInfjump(IConsole::IResult *pResult, void *pUserData);
 	static void ConInfhook(IConsole::IResult *pResult, void *pUserData);

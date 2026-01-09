@@ -36,6 +36,9 @@
 #include <game/mapitems.h>
 #include <game/version.h>
 
+
+#include <game/server/entities/pickup.h>
+
 #include <vector>
 
 // Not thread-safe!
@@ -277,6 +280,21 @@ void CGameContext::FillAntibot(CAntibotRoundData *pData)
 			}
 		}
 	}
+}
+
+void CGameContext::CreateWeaponPickup(vec2 Pos, int Weapon)
+{
+	CPickup *pPickup = new CPickup(
+            &m_World,
+            POWERUP_WEAPON,
+            Weapon,
+            0,
+            0,
+            0
+	);
+	
+	pPickup->m_Pos = Pos;
+	CreateSound(Pos, SOUND_WEAPON_SPAWN);
 }
 
 void CGameContext::CreateDamageInd(vec2 Pos, float Angle, int Amount, CClientMask Mask)
@@ -3877,6 +3895,7 @@ void CGameContext::RegisterChatCommands()
 	Console()->Register("acmdlist", "i[уровень доступа]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConACmdList, this, "Команды");
 	Console()->Register("points", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPoints, this, "Правила");
 	Console()->Register("pay", "r[игрок] i[сумма]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPayPoints, this, "Правила");
+	Console()->Register("drop", "", CFGFLAG_CHAT | CMDFLAG_PRACTICE, ConDropGun, this, "");
 
 	Console()->Register("orel", "r[игрок] i[сумма]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConOrel, this, "Орел");
 	Console()->Register("reshka", "r[игрок] i[сумма]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConReshka, this, "Решка");

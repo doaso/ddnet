@@ -44,6 +44,33 @@ void CGameContext::ConGiveGun(IConsole::IResult *pResult, void *pUserData)
         ConAddWeapon(pResult, pUserData);
 }
 
+void CGameContext::ConDropGun(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+	}
+
+        int ActiveWepapon = pChr->GetActiveWeapon();
+        if (ActiveWepapon == WEAPON_HAMMER || ActiveWepapon == WEAPON_GUN) {
+            return;
+        }
+
+	vec2 Pos = pChr->m_Pos;
+        pSelf->CreateWeaponPickup(Pos, ActiveWepapon);
+        pSelf->ModifyWeapons(pResult, pUserData, ActiveWepapon, true);
+        pChr->SetActiveWeapon(WEAPON_HAMMER);
+}
 
 void CGameContext::ConEffect(IConsole::IResult *pResult, void *pUserData)
 {
@@ -437,6 +464,7 @@ void CGameContext::ConCmdList(IConsole::IResult *pResult, void *pUserData) {
 /points - Баланс
 /pay - Передать пойнты
 /shop - Магазин
+/drop - Выбросить оружие
 /orel - Регистрация игры в Орел и Решка за сторону Орел
 /reshka - Регистрация игры в Орел и Решка за сторону Решка
             )");
