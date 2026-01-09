@@ -3876,7 +3876,7 @@ void CGameContext::RegisterChatCommands()
 	Console()->Register("rules", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConRules, this, "Правила");
 	Console()->Register("shop", "?i[айди товара]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConShop, this, "Правила");
         Console()->Register("cmdlist", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConCmdList, this, "Команды");
-	Console()->Register("commands", "i[уровень доступа]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConCommands, this, "Команды");
+	Console()->Register("acmdlist", "i[уровень доступа]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConACmdList, this, "Команды");
 	Console()->Register("points", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPoints, this, "Правила");
 	Console()->Register("pay", "r[игрок] i[сумма]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConPayPoints, this, "Правила");
 

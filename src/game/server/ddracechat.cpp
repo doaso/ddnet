@@ -436,37 +436,37 @@ void CGameContext::ConCmdList(IConsole::IResult *pResult, void *pUserData) {
         }
 
             pSelf->SendMotd(pResult->m_ClientId, R"(Команды:
-/login - Авторизация в аккаунт
-/register - Зарегистрировать аккаунт
-/passwd - Поменять пароль от аккаунта
-/rules - Вывести правила
-/commands - Вывести команды по уровеню доступа
-/points - Вывести баланс
+/cmdlist - Команды
+/acmdlist - Команды администрации
+/login - Авторизация
+/register - Регистрация
+/passwd - Поменять пароль
+/rules - Правила
+/points - Баланс
 /pay - Передать пойнты
 /shop - Магазин
-/orel или /reshka - Предложить сыграть в орел и решка
+/orel - Регистрация игры в Орел и Решка за сторону Орел
+/reshka - Регистрация игры в Орел и Решка за сторону Решка
             )");
 }
 
-void CGameContext::ConCommands(IConsole::IResult *pResult, void *pUserData) {
+void CGameContext::ConACmdList(IConsole::IResult *pResult, void *pUserData) {
 	CGameContext *pSelf = (CGameContext *)pUserData;
         if (!pSelf) {
             return;
         }
 
-        if (pResult->GetInteger(0) == 0) {
-            pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 0-го уровня доступа:
-/login - Авторизация в аккаунт
-/register - Зарегистрировать аккаунт
-/passwd - Поменять пароль от аккаунта
-/rules - Вывести правила
-/commands - Вывести команды по уровеню доступа
-/points - Вывести баланс
-/pay - Передать пойнты
-/shop - Магазин
-/orel или /reshka - Предложить сыграть в орел и решка
-            )");
-        } else if (pResult->GetInteger(0) == 1) {
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 1) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+        if (pResult->GetInteger(0) == 1) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 1-го уровня доступа:
 /effect - Установить эффект
 /infjump - Включить бескоенчные прыжки
@@ -576,7 +576,7 @@ void CGameContext::ConSetLevel(IConsole::IResult *pResult, void *pUserData) {
         pSelf->Score()->ChangeRoleAccount(pResult->GetString(0), AccountRole);
         str_format(aBuf, sizeof(aBuf), "Вы установили %s постоянный %i уровень доступа", pResult->GetString(0), AccountRole);
         pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам постоянный %i уровень доступа", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам постоянный %i уровень доступа\nИспользуйте /acmdlist что-бы посмотреть ваши команды", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
         pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
 }
 
@@ -675,7 +675,7 @@ void CGameContext::ConSetTempLevel(IConsole::IResult *pResult, void *pUserData) 
         pPlayerTarget->m_AccountRole = AccountRole;
         str_format(aBuf, sizeof(aBuf), "Вы установили %s врмеменный %i уровень доступа", pResult->GetString(0), AccountRole);
         pSelf->SendChatTarget(pPlayer->GetCid(), aBuf);
-        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам врмеменный %i уровень доступа", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
+        str_format(aBuf, sizeof(aBuf), "Администратор %s установил вам врмеменный %i уровень доступа\nИспользуйте /acmdlist что-бы посмотреть ваши команды", pSelf->Server()->ClientName(pPlayer->GetCid()), AccountRole);
         pSelf->SendChatTarget(pPlayerTarget->GetCid(), aBuf);
 }
 
