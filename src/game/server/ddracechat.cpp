@@ -476,6 +476,7 @@ void CGameContext::ConACmdList(IConsole::IResult *pResult, void *pUserData) {
             )");       
         } else if (pResult->GetInteger(0) == 3) {
              pSelf->SendMotd(pResult->m_ClientId, R"(Команды для 3-го уровня доступа:
+/az - Телепортироваться в админ зону
 /goto - Телепортироваться к игроку
 /gethere - Телепортировать игрока к себе
             )");       
@@ -1169,6 +1170,31 @@ void CGameContext::ConUnSuperC(IConsole::IResult *pResult, void *pUserData) {
         }
 
         pChr->SetSuper(false);
+}
+
+void CGameContext::ConAZ(IConsole::IResult *pResult, void *pUserData) {
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId)) {
+            return;
+        }
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer) {
+            return;
+        }
+
+        if (pPlayer->m_AccountRole < 3) {
+            pSelf->SendChatTarget(pPlayer->GetCid(), "У вас недостаточно прав");
+            return;
+        }
+
+	CCharacter *pChr = pPlayer->GetCharacter();
+	if(!pChr) {
+            return;
+        }
+
+        vec2 AdminZonaPos = vec2(240.0f, 144.0f);
+        pChr->SetPosition(AdminZonaPos);
 }
 
 void CGameContext::ConTpSpec(IConsole::IResult *pResult, void *pUserData) {

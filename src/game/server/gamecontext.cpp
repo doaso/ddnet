@@ -3907,6 +3907,8 @@ void CGameContext::RegisterChatCommands()
         Console()->Register("tpspec", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConTpSpec, this, "Телепортирует вас к игроку");
         Console()->Register("untpspec", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConUnTpSpec, this, "Телепортирует вас к игроку");
 
+        Console()->Register("az", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConAZ, this, "Админ зона");
+
         Console()->Register("god", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConSuperC, this, "");
         Console()->Register("ungod", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConUnSuperC, this, "");
         Console()->Register("solo", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConSoloC, this, "");

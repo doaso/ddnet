@@ -438,6 +438,7 @@ private:
 	static void ConGetHere(IConsole::IResult *pResult, void *pUserData);
 	static void ConGoto(IConsole::IResult *pResult, void *pUserData);
 	static void ConTpSpec(IConsole::IResult *pResult, void *pUserData);
+	static void ConAZ(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnTpSpec(IConsole::IResult *pResult, void *pUserData);
 	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
 	static void ConUnFreeze(IConsole::IResult *pResult, void *pUserData);
