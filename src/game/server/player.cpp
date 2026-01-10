@@ -246,16 +246,14 @@ void CPlayer::Tick()
                                         GameServer()->CreateDeath(m_pCharacter->GetPos(), m_pCharacter->GetId());
                                     } else {
                                         if (m_pCharacter->Core()->HookedPlayer() != -1) {
-                                            if (m_pCharacter->IsSuper() == false) {
-                                                CCharacter *pHooker = GameServer()->GetPlayerChar(m_pCharacter->Core()->HookedPlayer());
-                                                int Reward = 1 + rand() % 3;
-                                                m_AccountPoints += Reward;
-                                                GameServer()->Score()->ChangePointsAccount(Server()->ClientName(m_ClientId), m_AccountPoints);
-                                                char aBuf[256];
-                                                str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", m_AccountPoints);
-                                                GameServer()->SendChatTarget(m_ClientId, aBuf, CGameContext::FLAG_SIX);
-                                                pHooker->Die(m_ClientId, 0, true);
-                                            }
+                                            CCharacter *pHooker = GameServer()->GetPlayerChar(m_pCharacter->Core()->HookedPlayer());
+                                            int Reward = 1 + rand() % 3;
+                                            m_AccountPoints += Reward;
+                                            GameServer()->Score()->ChangePointsAccount(Server()->ClientName(m_ClientId), m_AccountPoints);
+                                            char aBuf[256];
+                                            str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", m_AccountPoints);
+                                            GameServer()->SendChatTarget(m_ClientId, aBuf, CGameContext::FLAG_SIX);
+                                            pHooker->Die(m_ClientId, 0, true);
                                         }
                                     }
                                 } else if (m_Effect == 2) {
