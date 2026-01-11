@@ -114,7 +114,7 @@ bool CSqliteConnection::Connect(char *pError, int ErrorSize)
 {
 	if(m_InUse.exchange(true))
 	{
-		dbg_assert(false, "Tried connecting while the connection is in use");
+		dbg_assert_failed("Tried connecting while the connection is in use");
 	}
 	if(!ConnectImpl(pError, ErrorSize))
 	{
@@ -154,9 +154,6 @@ bool CSqliteConnection::ConnectImpl(char *pError, int ErrorSize)
 		FormatCreateRace(aBuf, sizeof(aBuf), /* Backup */ false);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
-		FormatCreateAccounts(aBuf, sizeof(aBuf), /* Backup */ false);
-		if(!Execute(aBuf, pError, ErrorSize))
-			return false;
 		FormatCreateTeamrace(aBuf, sizeof(aBuf), "BLOB", /* Backup */ false);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
@@ -171,9 +168,6 @@ bool CSqliteConnection::ConnectImpl(char *pError, int ErrorSize)
 			return false;
 
 		FormatCreateRace(aBuf, sizeof(aBuf), /* Backup */ true);
-		if(!Execute(aBuf, pError, ErrorSize))
-			return false;
-		FormatCreateAccounts(aBuf, sizeof(aBuf), /* Backup */ true);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
 		FormatCreateTeamrace(aBuf, sizeof(aBuf), "BLOB", /* Backup */ true);

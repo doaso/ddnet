@@ -47,7 +47,7 @@ protected:
 	{
 		char aAddrStr[NETADDR_MAXSTRSIZE];
 		net_addr_str(pData, aAddrStr, sizeof(aAddrStr), false);
-		str_format(pBuffer, BufferSize, "'%s'", aAddrStr);
+		str_format(pBuffer, BufferSize, "<{'%s'}>", aAddrStr);
 		return pBuffer;
 	}
 
@@ -56,7 +56,7 @@ protected:
 		char aAddrStr1[NETADDR_MAXSTRSIZE], aAddrStr2[NETADDR_MAXSTRSIZE];
 		net_addr_str(&pData->m_LB, aAddrStr1, sizeof(aAddrStr1), false);
 		net_addr_str(&pData->m_UB, aAddrStr2, sizeof(aAddrStr2), false);
-		str_format(pBuffer, BufferSize, "'%s' - '%s'", aAddrStr1, aAddrStr2);
+		str_format(pBuffer, BufferSize, "<{'%s' - '%s'}>", aAddrStr1, aAddrStr2);
 		return pBuffer;
 	}
 
@@ -209,7 +209,7 @@ void CNetBan::MakeBanInfo(const CBan<T> *pBan, char *pBuf, unsigned BuffSize, in
 	// build type based part
 	char aBuf[256];
 	if(Type == MSGTYPE_PLAYER)
-		str_copy(aBuf, "Вы заблокированы");
+		str_copy(aBuf, "You have been banned");
 	else
 	{
 		char aTemp[256];
@@ -234,9 +234,9 @@ void CNetBan::MakeBanInfo(const CBan<T> *pBan, char *pBuf, unsigned BuffSize, in
 	{
 		int Mins = ((pBan->m_Info.m_Expires - time_timestamp()) + 59) / 60;
 		if(Mins <= 1)
-			str_format(pBuf, BuffSize, "%s на 1 минуту Причина: %s", aBuf, pBan->m_Info.m_aReason);
+			str_format(pBuf, BuffSize, "%s for 1 minute (%s)", aBuf, pBan->m_Info.m_aReason);
 		else
-			str_format(pBuf, BuffSize, "%s на %d минут Причина: %s", aBuf, Mins, pBan->m_Info.m_aReason);
+			str_format(pBuf, BuffSize, "%s for %d minutes (%s)", aBuf, Mins, pBan->m_Info.m_aReason);
 	}
 	else
 		str_format(pBuf, BuffSize, "%s (%s)", aBuf, pBan->m_Info.m_aReason);

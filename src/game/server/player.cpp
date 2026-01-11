@@ -25,7 +25,8 @@ CPlayer::CPlayer(CGameContext *pGameServer, uint32_t UniqueClientId, int ClientI
 {
 	m_pGameServer = pGameServer;
 	m_ClientId = ClientId;
-	m_Team = GameServer()->m_pController->ClampTeam(Team);
+	dbg_assert(GameServer()->m_pController->IsValidTeam(Team), "Invalid Team: %d", Team);
+	m_Team = Team;
 	m_NumInputs = 0;
 	Reset();
 	GameServer()->Antibot()->OnPlayerInit(m_ClientId);
@@ -112,6 +113,7 @@ void CPlayer::Reset()
 	m_LastDDRaceTeamChange = 0;
 	m_ShowOthers = g_Config.m_SvShowOthersDefault;
 	m_ShowAll = g_Config.m_SvShowAllDefault;
+	m_EnableSpectatorCount = true;
 	m_ShowDistance = vec2(1200, 800);
 	m_SpecTeam = false;
 	m_NinjaJetpack = false;
@@ -121,7 +123,6 @@ void CPlayer::Reset()
 	m_Whispers = true;
 
 	m_LastPause = 0;
-	m_Score.reset();
 
 	// Variable initialized:
 	m_LastSqlQuery = 0;
@@ -180,8 +181,6 @@ void CPlayer::Tick()
 	if(m_ChatScore > 0)
 		m_ChatScore--;
 
-	Server()->SetClientScore(m_ClientId, m_Score);
-
 	if(m_Moderating && m_Afk)
 	{
 		m_Moderating = false;
@@ -234,65 +233,6 @@ void CPlayer::Tick()
 			if(m_pCharacter->IsAlive())
 			{
 				ProcessPause();
-
-                                if (m_IsLoginOrRegister == true) {
-                                    m_pCharacter->SetLiveFrozen(true);
-                                }
-
-
-                                if (m_Effect == 1) {
-                                    if (Server()->Tick() >= m_LastEffectTime) {
-                                        m_LastEffectTime = Server()->Tick() + Server()->TickSpeed();
-                                        GameServer()->CreateDeath(m_pCharacter->GetPos(), m_pCharacter->GetId());
-                                    } else {
-                                        if (m_pCharacter->Core()->HookedPlayer() != -1) {
-                                            CCharacter *pHooker = GameServer()->GetPlayerChar(m_pCharacter->Core()->HookedPlayer());
-                                            int Reward = 1 + rand() % 3;
-                                            m_AccountPoints += Reward;
-                                            GameServer()->Score()->ChangePointsAccount(Server()->ClientName(m_ClientId), m_AccountPoints);
-                                            char aBuf[256];
-                                            str_format(aBuf, sizeof(aBuf), "На вашем балансе: %i пойнтов", m_AccountPoints);
-                                            GameServer()->SendChatTarget(m_ClientId, aBuf, CGameContext::FLAG_SIX);
-                                            pHooker->Die(m_ClientId, 0, true);
-                                        }
-                                    }
-                                } else if (m_Effect == 2) {
-                                    if (Server()->Tick() >= m_LastEffectTime) {
-                                        m_LastEffectTime = Server()->Tick() + (Server()->TickSpeed() / 10);
-                                        const float angleStep = 2.0f * pi / 8.0f;
-
-                                        vec2 offset = vec2(cosf(m_EffectAngle) * 200.0f, sinf(m_EffectAngle) * 200.0f);
-                                        vec2 explosionPos = m_pCharacter->GetPos() + offset;
-                                        GameServer()->CreateExplosion(explosionPos, m_pCharacter->GetId(), WEAPON_GRENADE, true, -1);
-
-                                        m_EffectAngle += angleStep;
-                                        if (m_EffectAngle >= 2.0f * pi) {
-                                            m_EffectAngle -= 2.0f * pi;
-                                        }
-                                    }
-                                } else if (m_Effect == 3) {
-                                    if (Server()->Tick() >= m_LastEffectTime) {
-                                        m_LastEffectTime = Server()->Tick() + Server()->TickSpeed();
-                                        GameServer()->CreateBirthdayEffect(m_pCharacter->GetPos());
-                                        m_pCharacter->SetEndlessHook(true);
-                                        m_pCharacter->SetEndlessJump(true);
-                                    }
-                                }
-
-                                if (m_Effect == 4) {
-                                    m_pCharacter->SetInvincible(true);
-                                } else {
-                                    m_pCharacter->SetInvincible(false);
-                                }
-
-                                if (m_Effect == 5) {
-                                    m_pCharacter->SetArmor(-1);
-                                } else if (m_Effect == 6) {
-                                    m_pCharacter->SetArmor(-2);
-                                } else {
-                                    m_pCharacter->SetArmor(0);
-                                }
-
 				if(!m_Paused)
 					m_ViewPos = m_pCharacter->m_Pos;
 			}
@@ -380,10 +320,7 @@ void CPlayer::Snap(int SnappingClient)
 		return;
 
 	StrToInts(pClientInfo->m_aName, std::size(pClientInfo->m_aName), Server()->ClientName(m_ClientId));
-
-        char aRoleStr[16];
-        str_format(aRoleStr, sizeof(aRoleStr), "LVL: %d", m_AccountRole);
-        StrToInts(pClientInfo->m_aClan, std::size(aRoleStr), aRoleStr);
+	StrToInts(pClientInfo->m_aClan, std::size(pClientInfo->m_aClan), Server()->ClientClan(m_ClientId));
 	pClientInfo->m_Country = Server()->ClientCountry(m_ClientId);
 	StrToInts(pClientInfo->m_aSkin, std::size(pClientInfo->m_aSkin), m_TeeInfos.m_aSkinName);
 	pClientInfo->m_UseCustomColor = m_TeeInfos.m_UseCustomColor;
@@ -392,29 +329,7 @@ void CPlayer::Snap(int SnappingClient)
 
 	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
 	int Latency = SnappingClient == SERVER_DEMO_CLIENT ? m_Latency.m_Min : GameServer()->m_apPlayers[SnappingClient]->m_aCurLatency[m_ClientId];
-
-	int Score;
-	// This is the time sent to the player while ingame (do not confuse to the one reported to the master server).
-	// Due to clients expecting this as a negative value, we have to make sure it's negative.
-	// Special numbers:
-	// -9999: means no time and isn't displayed in the scoreboard.
-	if(m_Score.has_value())
-	{
-		// shift the time by a second if the player actually took 9999
-		// seconds to finish the map.
-		if(m_Score.value() == 9999)
-			Score = -10000;
-		else
-			Score = -m_Score.value();
-	}
-	else
-	{
-		Score = -9999;
-	}
-
-	// send 0 if times of others are not shown
-	if(SnappingClient != m_ClientId && g_Config.m_SvHideScore)
-		Score = -9999;
+	int Score = GameServer()->m_pController->SnapPlayerScore(SnappingClient, this);
 
 	if(!Server()->IsSixup(SnappingClient))
 	{
@@ -444,9 +359,7 @@ void CPlayer::Snap(int SnappingClient)
 			pPlayerInfo->m_PlayerFlags |= protocol7::PLAYERFLAG_AIM;
 		if(Server()->IsRconAuthed(m_ClientId) && ((SnappingClient >= 0 && Server()->IsRconAuthed(SnappingClient)) || !Server()->HasAuthHidden(m_ClientId)))
 			pPlayerInfo->m_PlayerFlags |= protocol7::PLAYERFLAG_ADMIN;
-
-		// Times are in milliseconds for 0.7
-		pPlayerInfo->m_Score = m_Score.has_value() ? GameServer()->Score()->PlayerData(m_ClientId)->m_BestTime * 1000 : -1;
+		pPlayerInfo->m_Score = Score;
 		pPlayerInfo->m_Latency = Latency;
 	}
 
@@ -492,12 +405,17 @@ void CPlayer::Snap(int SnappingClient)
 			pDDNetSpectatorInfo->m_Deadzone = pSpecPlayer->m_CameraInfo.m_Deadzone;
 			pDDNetSpectatorInfo->m_FollowFactor = pSpecPlayer->m_CameraInfo.m_FollowFactor;
 
-			if(SpectatingClient == TranslatedId && SnappingClient != SERVER_DEMO_CLIENT && m_Team != TEAM_SPECTATORS && !m_Paused)
+			if(pSpecPlayer->m_EnableSpectatorCount && SpectatingClient == TranslatedId && SnappingClient != SERVER_DEMO_CLIENT && m_Team != TEAM_SPECTATORS && !m_Paused)
 			{
+				CNetObj_SpectatorCount *pSpectatorCount = Server()->SnapNewItem<CNetObj_SpectatorCount>(0);
+				if(!pSpectatorCount)
+				{
+					return;
+				}
 				int SpectatorCount = 0;
 				for(auto &pPlayer : GameServer()->m_apPlayers)
 				{
-					if(!pPlayer || pPlayer->m_ClientId == TranslatedId || pPlayer->m_Afk ||
+					if(!pPlayer || !pPlayer->m_EnableSpectatorCount || pPlayer->m_ClientId == TranslatedId || pPlayer->m_Afk ||
 						(Server()->IsRconAuthed(pPlayer->m_ClientId) && Server()->HasAuthHidden(pPlayer->m_ClientId)) ||
 						!(pPlayer->m_Paused || pPlayer->m_Team == TEAM_SPECTATORS))
 					{
@@ -518,6 +436,7 @@ void CPlayer::Snap(int SnappingClient)
 					}
 				}
 				pDDNetSpectatorInfo->m_SpectatorCount = SpectatorCount;
+				pSpectatorCount->m_NumSpectators = SpectatorCount;
 			}
 		}
 	}
@@ -531,10 +450,6 @@ void CPlayer::Snap(int SnappingClient)
 	else
 		pDDNetPlayer->m_AuthLevel = AUTHED_NO;
 
-        if (m_AccountRole >= 3) {
-            pDDNetPlayer->m_AuthLevel = AUTHED_ADMIN;
-        }
-
 	pDDNetPlayer->m_Flags = 0;
 	if(m_Afk)
 		pDDNetPlayer->m_Flags |= EXPLAYERFLAG_AFK;
@@ -542,6 +457,10 @@ void CPlayer::Snap(int SnappingClient)
 		pDDNetPlayer->m_Flags |= EXPLAYERFLAG_SPEC;
 	if(m_Paused == PAUSE_PAUSED)
 		pDDNetPlayer->m_Flags |= EXPLAYERFLAG_PAUSED;
+
+	IGameController::CFinishTime PlayerTime = GameServer()->m_pController->SnapPlayerTime(SnappingClient, this);
+	pDDNetPlayer->m_FinishTimeSeconds = PlayerTime.m_Seconds;
+	pDDNetPlayer->m_FinishTimeMillis = PlayerTime.m_Milliseconds;
 
 	if(Server()->IsSixup(SnappingClient) && m_pCharacter && m_pCharacter->m_DDRaceState == ERaceState::STARTED &&
 		GameServer()->m_apPlayers[SnappingClient]->m_TimerType == TIMERTYPE_SIXUP)
@@ -601,7 +520,7 @@ void CPlayer::FakeSnap()
 	pPlayerInfo->m_Latency = m_Latency.m_Min;
 	pPlayerInfo->m_Local = 1;
 	pPlayerInfo->m_ClientId = FakeId;
-	pPlayerInfo->m_Score = -9999;
+	pPlayerInfo->m_Score = FinishTime::NOT_FINISHED_TIMESCORE;
 	pPlayerInfo->m_Team = TEAM_SPECTATORS;
 
 	CNetObj_SpectatorInfo *pSpectatorInfo = Server()->SnapNewItem<CNetObj_SpectatorInfo>(FakeId);
@@ -723,7 +642,7 @@ CCharacter *CPlayer::ForceSpawn(vec2 Pos)
 	m_Spawning = false;
 	m_pCharacter = new(m_ClientId) CCharacter(&GameServer()->m_World, GameServer()->GetLastPlayerInput(m_ClientId));
 	m_pCharacter->Spawn(this, Pos);
-	m_Team = 0;
+	m_Team = TEAM_GAME;
 	return m_pCharacter;
 }
 
@@ -806,7 +725,7 @@ void CPlayer::TryRespawn()
 {
 	vec2 SpawnPos;
 
-	if(!GameServer()->m_pController->CanSpawn(m_Team, &SpawnPos, GameServer()->GetDDRaceTeam(m_ClientId)))
+	if(!GameServer()->m_pController->CanSpawn(m_Team, &SpawnPos, m_ClientId))
 		return;
 
 	m_WeakHookSpawn = false;
@@ -1049,7 +968,7 @@ void CPlayer::ProcessScoreResult(CScorePlayerResult &Result)
 			if(Result.m_Data.m_Info.m_Time.has_value())
 			{
 				GameServer()->Score()->PlayerData(m_ClientId)->Set(Result.m_Data.m_Info.m_Time.value(), Result.m_Data.m_Info.m_aTimeCp);
-				m_Score = Result.m_Data.m_Info.m_Time;
+				Server()->SetClientScore(m_ClientId, Result.m_Data.m_Info.m_Time.value());
 			}
 			Server()->ExpireServerInfo();
 			int Birthday = Result.m_Data.m_Info.m_Birthday;
@@ -1069,25 +988,6 @@ void CPlayer::ProcessScoreResult(CScorePlayerResult &Result)
 				GameServer()->CreateBirthdayEffect(GetCharacter()->m_Pos, GetCharacter()->TeamMask());
 			}
 			GameServer()->SendRecord(m_ClientId);
-
-                        m_AccountId = Result.m_Data.m_Info.m_AccountId;
-                        str_copy(m_aAccountPassword, Result.m_Data.m_Info.m_aAccountPassword, sizeof(m_aAccountPassword));
-                        m_AccountRole = Result.m_Data.m_Info.m_AccountRole;
-                        m_IsHaveAccount = Result.m_Data.m_Info.m_IsHaveAccount;
-                        m_AccountPoints = Result.m_Data.m_Info.m_AccountPoints;
-
-                        if (!m_IsHaveAccount) {
-                            GameServer()->SendChatTarget(m_ClientId, "Ваш аккаунт не зарегистрирован. Чтобы продолжить игру на сервере, зарегистрируйте его, используя команду /register");
-                            GameServer()->SendBroadcast("Добро пожаловать на сервер ГОРЯЧИЕ TWINBOOBS!\nВведите /register для регистрации", m_ClientId);
-                        } else {
-                            GameServer()->SendChatTarget(m_ClientId, "Ваш аккаунт зарегистрирован. Чтобы продолжить игру на сервере, войдите, используя команду /login");
-                            GameServer()->SendBroadcast("Добро пожаловать на сервер ГОРЯЧИЕ TWINBOOBS!\nВведите /login для входа в аккаунт", m_ClientId);
-                        }
-
-                        GameServer()->SendChatTarget(m_ClientId, "Github: https://github.com/doaso/ddnet");
-
-                        m_TryPassword = 3;
-                        m_IsLoginOrRegister = true;
 			break;
 		}
 		case CScorePlayerResult::PLAYER_TIMECP:

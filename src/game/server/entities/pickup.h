@@ -19,13 +19,11 @@ public:
 
 	int Type() const { return m_Type; }
 	int Subtype() const { return m_Subtype; }
-        int GetSpawnTime() const { return m_SpawnTime; }
 
 private:
 	int m_Type;
 	int m_Subtype;
 	int m_Flags;
-        int m_SpawnTime;
 
 	// DDRace
 

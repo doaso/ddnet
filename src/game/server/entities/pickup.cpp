@@ -23,7 +23,6 @@ CPickup::CPickup(CGameWorld *pGameWorld, int Type, int SubType, int Layer, int N
 	m_Layer = Layer;
 	m_Number = Number;
 	m_Flags = Flags;
-        m_SpawnTime = Server()->Tick();
 
 	GameWorld()->InsertEntity(this);
 }
@@ -132,8 +131,6 @@ void CPickup::Tick()
 				break;
 
 			case POWERUP_WEAPON:
-                                if(Server()->Tick() - m_SpawnTime < 25)
-                                    break;
 
 				if(m_Subtype >= 0 && m_Subtype < NUM_WEAPONS && (!pChr->GetWeaponGot(m_Subtype) || pChr->GetWeaponAmmo(m_Subtype) != -1))
 				{
@@ -148,8 +145,6 @@ void CPickup::Tick()
 
 					if(pChr->GetPlayer())
 						GameServer()->SendWeaponPickup(pChr->GetPlayer()->GetCid(), m_Subtype);
-
-                                        m_MarkedForDestroy = true;
 				}
 				break;
 

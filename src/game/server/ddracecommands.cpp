@@ -166,9 +166,94 @@ void CGameContext::ConUnSuper(IConsole::IResult *pResult, void *pUserData)
 void CGameContext::ConToggleInvincible(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
 	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
 	if(pChr)
 		pChr->SetInvincible(pResult->NumArguments() == 0 ? !pChr->Core()->m_Invincible : pResult->GetInteger(0));
+}
+
+void CGameContext::ConSolo(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->SetSolo(true);
+}
+
+void CGameContext::ConUnSolo(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->SetSolo(false);
+}
+
+void CGameContext::ConFreeze(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->Freeze();
+}
+
+void CGameContext::ConUnFreeze(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->UnFreeze();
+}
+
+void CGameContext::ConDeep(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->SetDeepFrozen(true);
+}
+
+void CGameContext::ConUnDeep(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+	{
+		pChr->SetDeepFrozen(false);
+		pChr->UnFreeze();
+	}
+}
+
+void CGameContext::ConLiveFreeze(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->SetLiveFrozen(true);
+}
+
+void CGameContext::ConUnLiveFreeze(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+	if(pChr)
+		pChr->SetLiveFrozen(false);
 }
 
 void CGameContext::ConShotgun(IConsole::IResult *pResult, void *pUserData)
@@ -282,7 +367,7 @@ void CGameContext::ModifyWeapons(IConsole::IResult *pResult, void *pUserData,
 	if(std::clamp(Weapon, -1, NUM_WEAPONS - 1) != Weapon)
 	{
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "info",
-			"неверный айди оружия");
+			"invalid weapon id");
 		return;
 	}
 
@@ -297,7 +382,82 @@ void CGameContext::ModifyWeapons(IConsole::IResult *pResult, void *pUserData,
 		pChr->GiveWeapon(Weapon, Remove);
 	}
 
-	// pChr->m_DDRaceState = ERaceState::CHEATED;
+	pChr->m_DDRaceState = ERaceState::CHEATED;
+}
+
+void CGameContext::Teleport(CCharacter *pChr, vec2 Pos)
+{
+	pChr->SetPosition(Pos);
+	pChr->m_Pos = Pos;
+	pChr->m_PrevPos = Pos;
+	pChr->m_DDRaceState = ERaceState::CHEATED;
+}
+
+void CGameContext::ConToTeleporter(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	unsigned int TeleTo = pResult->GetInteger(0);
+
+	if(!pSelf->Collision()->TeleOuts(TeleTo - 1).empty())
+	{
+		CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+		if(pChr)
+		{
+			int TeleOut = pSelf->m_World.m_Core.RandomOr0(pSelf->Collision()->TeleOuts(TeleTo - 1).size());
+			pSelf->Teleport(pChr, pSelf->Collision()->TeleOuts(TeleTo - 1)[TeleOut]);
+		}
+	}
+}
+
+void CGameContext::ConToCheckTeleporter(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	unsigned int TeleTo = pResult->GetInteger(0);
+
+	if(!pSelf->Collision()->TeleCheckOuts(TeleTo - 1).empty())
+	{
+		CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
+		if(pChr)
+		{
+			int TeleOut = pSelf->m_World.m_Core.RandomOr0(pSelf->Collision()->TeleCheckOuts(TeleTo - 1).size());
+			pSelf->Teleport(pChr, pSelf->Collision()->TeleCheckOuts(TeleTo - 1)[TeleOut]);
+			pChr->m_TeleCheckpoint = TeleTo;
+		}
+	}
+}
+
+void CGameContext::ConTeleport(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+	int Tele = pResult->NumArguments() == 2 ? pResult->GetInteger(0) : pResult->m_ClientId;
+	int TeleTo = pResult->NumArguments() ? pResult->GetInteger(pResult->NumArguments() - 1) : pResult->m_ClientId;
+	int AuthLevel = pSelf->Server()->GetAuthedState(pResult->m_ClientId);
+
+	if(Tele != pResult->m_ClientId && AuthLevel < g_Config.m_SvTeleOthersAuthLevel)
+	{
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "tele", "you aren't allowed to tele others");
+		return;
+	}
+
+	CCharacter *pChr = pSelf->GetPlayerChar(Tele);
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+
+	if(pChr && pPlayer && pSelf->GetPlayerChar(TeleTo))
+	{
+		// default to view pos when character is not available
+		vec2 Pos = pPlayer->m_ViewPos;
+		if(pResult->NumArguments() == 0 && !pPlayer->IsPaused() && pChr->IsAlive())
+		{
+			vec2 Target = vec2(pChr->Core()->m_Input.m_TargetX, pChr->Core()->m_Input.m_TargetY);
+			Pos = pPlayer->m_CameraInfo.ConvertTargetToWorld(pChr->GetPos(), Target);
+		}
+		pSelf->Teleport(pChr, Pos);
+		pChr->ResetJumps();
+		pChr->UnFreeze();
+		pChr->SetVelocity(vec2(0, 0));
+	}
 }
 
 void CGameContext::ConKill(IConsole::IResult *pResult, void *pUserData)
@@ -367,7 +527,7 @@ void CGameContext::ConSetDDRTeam(IConsole::IResult *pResult, void *pUserData)
 	int Target = pResult->GetVictim();
 	int Team = pResult->GetInteger(1);
 
-	if(Team < TEAM_FLOCK || Team >= TEAM_SUPER)
+	if(!pController->Teams().IsValidTeamNumber(Team))
 		return;
 
 	CCharacter *pChr = pSelf->GetPlayerChar(Target);
@@ -376,6 +536,7 @@ void CGameContext::ConSetDDRTeam(IConsole::IResult *pResult, void *pUserData)
 		pSelf->m_apPlayers[Target]->KillCharacter(WEAPON_GAME);
 
 	pController->Teams().SetForceCharacterTeam(Target, Team);
+	pController->Teams().SetTeamLock(Team, true);
 }
 
 void CGameContext::ConUninvite(IConsole::IResult *pResult, void *pUserData)
@@ -390,15 +551,15 @@ void CGameContext::ConVoteNo(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
 
-	pSelf->ForceVote(pResult->m_ClientId, false);
+	pSelf->ForceVote(false);
 }
 
 void CGameContext::ConDrySave(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
-
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
 	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-
 	if(!pPlayer || !pSelf->Server()->IsRconAuthedAdmin(pResult->m_ClientId))
 		return;
 

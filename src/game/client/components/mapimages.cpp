@@ -19,7 +19,7 @@
 CMapImages::CMapImages()
 {
 	m_Count = 0;
-	mem_zero(m_aEntitiesIsLoaded, sizeof(m_aEntitiesIsLoaded));
+	std::fill(std::begin(m_aEntitiesIsLoaded), std::end(m_aEntitiesIsLoaded), false);
 	m_SpeedupArrowIsLoaded = false;
 
 	str_copy(m_aEntitiesPath, "editor/entities_clear");
@@ -139,6 +139,7 @@ void CMapImages::OnMapLoadImpl(class CLayers *pLayers, IMap *pMap)
 					!str_comp(pName, "grass_doodads") ||
 					!str_comp(pName, "grass_main") ||
 					!str_comp(pName, "winter_main") ||
+					!str_comp(pName, "generic_shadows") ||
 					!str_comp(pName, "generic_unhookable");
 			}
 			str_format(aPath, sizeof(aPath), "mapres/%s%s.png", pName, Translated ? "_0.7" : "");

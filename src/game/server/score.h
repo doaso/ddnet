@@ -51,11 +51,6 @@ public:
 	void SaveScore(int ClientId, int TimeTicks, const char *pTimestamp, const float aTimeCp[NUM_CHECKPOINTS], bool NotEligible);
 
 	void SaveTeamScore(int Team, int *pClientIds, unsigned int Size, int TimeTicks, const char *pTimestamp);
-        void RegisterAccount(const char *pNickname, const char *pPassword);
-        void ChangePasswordAccount(const char *pNickname, const char *pPassword);
-        void ChangeRoleAccount(const char *pNickname, int Role);
-        void ChangePointsAccount(const char *pNickname, int Points);
-        void ChangeNetAdressAccount(const char *pNickname, const char *pNetAdress);
 
 	void ShowTop(int ClientId, int Offset = 1);
 	void ShowRank(int ClientId, const char *pName);

@@ -505,7 +505,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 	}
 	else
 	{
-		dbg_assert(false, "Client state invalid for RenderMenubar");
+		dbg_assert_failed("Client state %d is invalid for RenderMenubar", ClientState);
 	}
 
 	// First render buttons aligned from right side so remaining
@@ -518,7 +518,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 	ColorRGBA QuitColor(1, 0, 0, 0.5f);
 	if(DoButton_MenuTab(&s_QuitButton, FONT_ICON_POWER_OFF, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_QUIT], nullptr, nullptr, &QuitColor, 10.0f))
 	{
-		if(GameClient()->Editor()->HasUnsavedData() || (GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmQuitTime && g_Config.m_ClConfirmQuitTime >= 0))
+		if(GameClient()->Editor()->HasUnsavedData() || (GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmQuitTime && g_Config.m_ClConfirmQuitTime >= 0) || m_MenusIngameTouchControls.UnsavedChanges() || GameClient()->m_TouchControls.HasEditingChanges())
 		{
 			m_Popup = POPUP_QUIT;
 		}
@@ -1128,7 +1128,7 @@ void CMenus::Render()
 			}
 			else
 			{
-				dbg_assert(false, "m_MenuPage invalid");
+				dbg_assert_failed("Invalid m_MenuPage: %d", m_MenuPage);
 			}
 
 			RenderMenubar(TabBar, ClientState);
@@ -1180,7 +1180,7 @@ void CMenus::Render()
 			}
 			else
 			{
-				dbg_assert(false, "m_GamePage invalid");
+				dbg_assert_failed("Invalid m_GamePage: %d", m_GamePage);
 			}
 
 			RenderMenubar(TabBar, ClientState);
@@ -1392,6 +1392,12 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		if(GameClient()->Editor()->HasUnsavedData())
 		{
 			str_format(aBuf, sizeof(aBuf), "%s\n\n%s", Localize("There's an unsaved map in the editor, you might want to save it."), Localize("Continue anyway?"));
+			Props.m_MaxWidth = Part.w - 20.0f;
+			Ui()->DoLabel(&Box, aBuf, 20.f, TEXTALIGN_ML, Props);
+		}
+		else if(GameClient()->m_TouchControls.HasEditingChanges() || m_MenusIngameTouchControls.UnsavedChanges())
+		{
+			str_format(aBuf, sizeof(aBuf), "%s\n\n%s", Localize("There's an unsaved change in the touch controls editor, you might want to save it."), Localize("Continue anyway?"));
 			Props.m_MaxWidth = Part.w - 20.0f;
 			Ui()->DoLabel(&Box, aBuf, 20.f, TEXTALIGN_ML, Props);
 		}
@@ -2031,8 +2037,7 @@ void CMenus::RenderPopupLoading(CUIRect Screen)
 			str_copy(aLabel1, Localize("Sending initial client info"));
 			break;
 		default:
-			dbg_assert(false, "Invalid loading state for RenderPopupLoading");
-			break;
+			dbg_assert_failed("Invalid loading state %d for RenderPopupLoading", static_cast<int>(Client()->LoadingStateDetail()));
 		}
 		aLabel2[0] = '\0';
 	}
@@ -2289,8 +2294,6 @@ void CMenus::OnWindowResize()
 
 void CMenus::OnRender()
 {
-	Ui()->StartCheck();
-
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		SetActive(true);
 
@@ -2309,12 +2312,12 @@ void CMenus::OnRender()
 		}
 		else if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		{
-			Ui()->FinishCheck();
 			Ui()->ClearHotkeys();
 			return;
 		}
 	}
 
+	Ui()->StartCheck();
 	UpdateColors();
 
 	Ui()->Update();
@@ -2346,7 +2349,7 @@ void CMenus::UpdateColors()
 	ms_ColorTabbarHoverOutgame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f);
 
 	const float ColorIngameScaleI = 0.5f;
-	const float ColorIngameAcaleA = 0.2f;
+	const float ColorIngameScaleA = 0.2f;
 
 	ms_ColorTabbarInactiveIngame = ColorRGBA(
 		ms_GuiColor.r * ColorIngameScaleI,
@@ -2355,9 +2358,9 @@ void CMenus::UpdateColors()
 		ms_GuiColor.a * 0.8f);
 
 	ms_ColorTabbarActiveIngame = ColorRGBA(
-		ms_GuiColor.r * ColorIngameAcaleA,
-		ms_GuiColor.g * ColorIngameAcaleA,
-		ms_GuiColor.b * ColorIngameAcaleA,
+		ms_GuiColor.r * ColorIngameScaleA,
+		ms_GuiColor.g * ColorIngameScaleA,
+		ms_GuiColor.b * ColorIngameScaleA,
 		ms_GuiColor.a);
 
 	ms_ColorTabbarHoverIngame = ColorRGBA(1.0f, 1.0f, 1.0f, 0.75f);
@@ -2429,9 +2432,8 @@ int CMenus::DoButton_CheckBox_Tristate(const void *pId, const char *pText, TRIST
 	case TRISTATE::ALL:
 		return DoButton_CheckBox_Common(pId, pText, "X", pRect, BUTTONFLAG_LEFT);
 	default:
-		dbg_assert(false, "invalid tristate");
+		dbg_assert_failed("Invalid tristate. Checked: %d", static_cast<int>(Checked));
 	}
-	dbg_break();
 }
 
 int CMenus::MenuImageScan(const char *pName, int IsDir, int DirType, void *pUser)
@@ -2491,9 +2493,9 @@ void CMenus::SetMenuPage(int NewPage)
 	{
 		g_Config.m_UiPage = NewPage;
 		bool ForceRefresh = false;
-		if(m_ForceRefreshLanPage)
+		if(m_ForceRefreshLanPage && NewPage == PAGE_LAN)
 		{
-			ForceRefresh = NewPage == PAGE_LAN;
+			ForceRefresh = true;
 			m_ForceRefreshLanPage = false;
 		}
 		if(OldPage != NewPage || ForceRefresh)

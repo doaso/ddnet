@@ -1,11 +1,8 @@
-# pylint: skip-file
-# See https://github.com/ddnet/ddnet/issues/3507
-
 from datatypes import Enum, Flags, NetArray, NetBool, NetEvent, NetEventEx, NetIntAny, NetTwIntString, NetIntRange
 from datatypes import NetMessage, NetMessageEx, NetObject, NetObjectEx, NetString, NetStringHalfStrict, NetStringStrict, NetTick
 
 Emotes = ["NORMAL", "PAIN", "HAPPY", "SURPRISE", "ANGRY", "BLINK"]
-PlayerFlags = ["PLAYING", "IN_MENU", "CHATTING", "SCOREBOARD", "AIM", "SPEC_CAM"]
+PlayerFlags = ["PLAYING", "IN_MENU", "CHATTING", "SCOREBOARD", "AIM", "SPEC_CAM", "INPUT_ABSOLUTE", "INPUT_MANUAL"]
 GameFlags = ["TEAMS", "FLAGS"]
 GameStateFlags = ["GAMEOVER", "SUDDENDEATH", "PAUSED", "RACETIME"]
 CharacterFlags = ["SOLO", "JETPACK", "COLLISION_DISABLED", "ENDLESS_HOOK", "ENDLESS_JUMP", "SUPER",
@@ -260,12 +257,14 @@ Objects = [
 		# New data fields for improved target accuracy
 		NetIntAny("m_TargetX", default=0),
 		NetIntAny("m_TargetY", default=0),
-		NetIntRange("m_TuneZoneOverride", -1, 'NUM_TUNEZONES-1', default=-1),
+		NetIntRange("m_TuneZoneOverride", 'TuneZone::OVERRIDE_NONE', 'TuneZone::NUM-1', default='TuneZone::OVERRIDE_NONE'),
 	], validate_size=False),
 
 	NetObjectEx("DDNetPlayer", "player@netobj.ddnet.tw", [
 		NetIntAny("m_Flags"),
 		NetIntRange("m_AuthLevel", "AUTHED_NO", "AUTHED_ADMIN"),
+		NetIntRange("m_FinishTimeSeconds", 'FinishTime::UNSET', 'max_int', default='FinishTime::UNSET'),
+		NetIntRange("m_FinishTimeMillis", 0, 999, default=0),
 	]),
 
 	NetObjectEx("GameInfoEx", "gameinfo@netobj.ddnet.tw", [
@@ -326,6 +325,10 @@ Objects = [
 		NetIntRange("m_Deadzone", 0, 'max_int'),
 		NetIntRange("m_FollowFactor", 0, 'max_int'),
 		NetIntRange("m_SpectatorCount", 0, 'MAX_CLIENTS-1', default=0),
+	]),
+
+	NetObjectEx("SpectatorCount", "spectator-count@netobj.ddnet.org", [
+		NetIntRange("m_NumSpectators", 0, 'max_int'),
 	]),
 
 	## Events
@@ -637,5 +640,17 @@ Messages = [
 		NetStringStrict("m_pGeneratedCode"),
 		NetStringStrict("m_pCode"),
 		NetStringStrict("m_pTeamMembers"),
+    ]),
+
+	NetMessageEx("Sv_ServerAlert", "server-alert@netmsg.ddnet.org", [
+		NetString("m_pMessage"),
+	]),
+
+	NetMessageEx("Sv_ModeratorAlert", "moderator-alert@netmsg.ddnet.org", [
+		NetString("m_pMessage"),
+	]),
+
+	NetMessageEx("Cl_EnableSpectatorCount", "enable-spectator-count@netmsg.ddnet.org", [
+		NetBool("m_Enable"),
 	]),
 ]

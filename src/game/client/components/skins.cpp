@@ -494,15 +494,7 @@ void CSkins::OnConsoleInit()
 
 void CSkins::OnInit()
 {
-	m_aEventSkinPrefix[0] = '\0';
-
-	if(g_Config.m_Events)
-	{
-		if(time_season() == SEASON_XMAS)
-		{
-			str_copy(m_aEventSkinPrefix, "santa");
-		}
-	}
+	RefreshEventSkins();
 
 	// load skins
 	Refresh([this]() {
@@ -616,8 +608,7 @@ void CSkins::UpdateStartLoading(CSkinLoadingStats &Stats)
 			pSkinContainer->m_pLoadJob = std::make_shared<CSkinDownloadJob>(this, pSkinContainer->Name());
 			break;
 		default:
-			dbg_assert(false, "pSkinContainer->Type() invalid");
-			dbg_break();
+			dbg_assert_failed("pSkinContainer->Type() invalid");
 		}
 		Engine()->AddJob(pSkinContainer->m_pLoadJob);
 		pSkinContainer->SetState(CSkinContainer::EState::LOADING);
@@ -669,6 +660,19 @@ void CSkins::UpdateFinishLoading(CSkinLoadingStats &Stats, std::chrono::nanoseco
 				Stats.m_NumError++;
 			}
 			pSkinContainer->m_pLoadJob = nullptr;
+		}
+	}
+}
+
+void CSkins::RefreshEventSkins()
+{
+	m_aEventSkinPrefix[0] = '\0';
+
+	if(g_Config.m_Events)
+	{
+		if(time_season() == SEASON_XMAS)
+		{
+			str_copy(m_aEventSkinPrefix, "santa");
 		}
 	}
 }

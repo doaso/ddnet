@@ -250,31 +250,6 @@ bool CScoreWorker::LoadPlayerData(IDbConnection *pSqlServer, const ISqlData *pGa
 		if(sscanf(aCurrent, "%d-%d-%d", &CurrentYear, &CurrentMonth, &CurrentDay) == 3 && sscanf(aStamp, "%d-%d-%d", &StampYear, &StampMonth, &StampDay) == 3 && CurrentMonth == StampMonth && CurrentDay == StampDay)
 			pResult->m_Data.m_Info.m_Birthday = CurrentYear - StampYear;
 	}
-
-        str_format(aBuf, sizeof(aBuf), "SELECT id, password, role, points FROM %s_accounts WHERE nickname = ?", pSqlServer->GetPrefix());
-        if (!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize)) {
-            return false;
-        }
-
-        pSqlServer->BindString(1, pData->m_aRequestingPlayer);
-
-        if (!pSqlServer->Step(&End, pError, ErrorSize)) {
-            return false;
-        }
-
-        if (!End) {
-            pResult->m_Data.m_Info.m_AccountId = pSqlServer->GetInt(1);
-            pSqlServer->GetString(2, pResult->m_Data.m_Info.m_aAccountPassword, sizeof(pResult->m_Data.m_Info.m_aAccountPassword));
-            pResult->m_Data.m_Info.m_AccountRole = pSqlServer->GetInt(3);
-            pResult->m_Data.m_Info.m_IsHaveAccount = true;
-            pResult->m_Data.m_Info.m_AccountPoints = pSqlServer->GetInt(4);
-        } else {
-            pResult->m_Data.m_Info.m_AccountId = -1;
-            pResult->m_Data.m_Info.m_AccountRole = 0;
-            pResult->m_Data.m_Info.m_IsHaveAccount = false;
-            pResult->m_Data.m_Info.m_AccountPoints = 0;
-        }
-
 	return true;
 }
 
@@ -910,17 +885,18 @@ bool CScoreWorker::ShowRank(IDbConnection *pSqlServer, const ISqlData *pGameData
 	{
 		int Rank = pSqlServer->GetInt(1);
 		float Time = pSqlServer->GetFloat(2);
-		// CEIL and FLOOR are not supported in SQLite
-		int BetterThanPercent = std::floor(100.0f - 100.0f * pSqlServer->GetFloat(3));
 		str_time_float(Time, TIME_HOURS_CENTISECS, aBuf, sizeof(aBuf));
+
 		if(g_Config.m_SvHideScore)
 		{
 			str_format(pResult->m_Data.m_aaMessages[0], sizeof(pResult->m_Data.m_aaMessages[0]),
-				"Your time: %s, better than %d%%", aBuf, BetterThanPercent);
+				"Your time: %s", aBuf);
 		}
 		else
 		{
 			pResult->m_MessageKind = CScorePlayerResult::ALL;
+			// CEIL and FLOOR are not supported in SQLite
+			int BetterThanPercent = std::floor(100.0f - 100.0f * pSqlServer->GetFloat(3));
 
 			if(str_comp_nocase(pData->m_aRequestingPlayer, pData->m_aName) == 0)
 			{
@@ -1076,7 +1052,7 @@ bool CScoreWorker::ShowTop(IDbConnection *pSqlServer, const ISqlData *pGameData,
 
 	// show top
 	int Line = 0;
-	str_copy(pResult->m_Data.m_aaMessages[Line], "------------ ТОП ------------", sizeof(pResult->m_Data.m_aaMessages[Line]));
+	str_copy(pResult->m_Data.m_aaMessages[Line], "------------ Global Top ------------", sizeof(pResult->m_Data.m_aaMessages[Line]));
 	Line++;
 
 	char aTime[32];
@@ -1090,13 +1066,46 @@ bool CScoreWorker::ShowTop(IDbConnection *pSqlServer, const ISqlData *pGameData,
 		str_time_float(Time, TIME_HOURS_CENTISECS, aTime, sizeof(aTime));
 		int Rank = pSqlServer->GetInt(3);
 		str_format(pResult->m_Data.m_aaMessages[Line], sizeof(pResult->m_Data.m_aaMessages[Line]),
-			"%d. %s Время: %s", Rank, aName, aTime);
+			"%d. %s Time: %s", Rank, aName, aTime);
 
 		Line++;
 	}
 
-        str_copy(pResult->m_Data.m_aaMessages[Line], "-----------------------------------------", sizeof(pResult->m_Data.m_aaMessages[Line]));
-        return End;
+	if(!g_Config.m_SvRegionalRankings)
+	{
+		str_copy(pResult->m_Data.m_aaMessages[Line], "-----------------------------------------", sizeof(pResult->m_Data.m_aaMessages[Line]));
+		return End;
+	}
+
+	char aServerLike[16];
+	str_format(aServerLike, sizeof(aServerLike), "%%%s%%", pData->m_aServer);
+
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+	pSqlServer->BindString(1, pData->m_aMap);
+	pSqlServer->BindString(2, aServerLike);
+	pSqlServer->BindInt(3, 3);
+
+	str_format(pResult->m_Data.m_aaMessages[Line], sizeof(pResult->m_Data.m_aaMessages[Line]),
+		"------------ %s Top ------------", pData->m_aServer);
+	Line++;
+
+	// show top
+	while(pSqlServer->Step(&End, pError, ErrorSize) && !End)
+	{
+		char aName[MAX_NAME_LENGTH];
+		pSqlServer->GetString(1, aName, sizeof(aName));
+		float Time = pSqlServer->GetFloat(2);
+		str_time_float(Time, TIME_HOURS_CENTISECS, aTime, sizeof(aTime));
+		int Rank = pSqlServer->GetInt(3);
+		str_format(pResult->m_Data.m_aaMessages[Line], sizeof(pResult->m_Data.m_aaMessages[Line]),
+			"%d. %s Time: %s", Rank, aName, aTime);
+		Line++;
+	}
+
+	return End;
 }
 
 bool CScoreWorker::ShowTeamTop5(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
@@ -1362,7 +1371,7 @@ bool CScoreWorker::ShowTimes(IDbConnection *pSqlServer, const ISqlData *pGameDat
 		char aServer[5];
 		pSqlServer->GetString(4, aServer, sizeof(aServer));
 		char aServerFormatted[8] = "\0";
-		if(str_comp(aServer, "ЛИЧНЫЙ") != 0)
+		if(str_comp(aServer, "UNK") != 0)
 			str_format(aServerFormatted, sizeof(aServerFormatted), "[%s] ", aServer);
 
 		char aAgoString[40] = "\0";
@@ -1674,9 +1683,7 @@ bool CScoreWorker::SaveTeam(IDbConnection *pSqlServer, const ISqlData *pGameData
 	bool UseGeneratedCode = pData->m_aCode[0] == '\0' || w != Write::NORMAL;
 
 	str_copy(pResult->m_aGeneratedCode, pData->m_aGeneratedCode);
-	pResult->m_aCode[0] = '\0';
-	if(UseGeneratedCode)
-		str_copy(pResult->m_aCode, pData->m_aCode);
+	str_copy(pResult->m_aCode, UseGeneratedCode ? "" : pData->m_aCode);
 
 	bool Retry = false;
 	// two tries, first use the user provided code, then the autogenerated
@@ -1712,6 +1719,10 @@ bool CScoreWorker::SaveTeam(IDbConnection *pSqlServer, const ISqlData *pGameData
 		if(NumInserted == 1)
 		{
 			pResult->m_Status = CScoreSaveResult::SAVE_SUCCESS;
+			if(UseGeneratedCode)
+			{
+				pResult->m_aCode[0] = '\0';
+			}
 			if(w != Write::NORMAL)
 			{
 				if(str_comp(pData->m_aServer, g_Config.m_SvSqlServerName) == 0)
@@ -1926,159 +1937,4 @@ bool CScoreWorker::GetSaves(IDbConnection *pSqlServer, const ISqlData *pGameData
 			pData->m_aMap, aLastSavedString);
 	}
 	return true;
-}
-
-bool CScoreWorker::RegisterAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
-{
-    const auto *pData = dynamic_cast<const CSqlRegisterRequest *>(pGameData);
-    auto *pResult = dynamic_cast<CScorePlayerResult *>(pGameData->m_pResult.get());
-
-    if (pResult != nullptr) {
-        pResult->SetVariant(CScorePlayerResult::PLAYER_INFO);
-    }
-
-    char aBuf[512];
-    str_format(aBuf, sizeof(aBuf), "INSERT INTO %s_accounts (nickname, password, role, points, netadress) VALUES (?, ?, 0, 0, '')", pSqlServer->GetPrefix());
-    if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
-        return false;
-
-    pSqlServer->BindString(1, pData->m_aName);
-    pSqlServer->BindString(2, pData->m_aPassword);
-
-    int NumInserted;
-    if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize) || NumInserted != 1)
-    {
-        if (pResult != nullptr) {
-            str_copy(pResult->m_Data.m_aaMessages[0], "Внутренняя ошибка, попробуйте позже", sizeof(pResult->m_Data.m_aaMessages[0]));
-        } else {
-            dbg_msg("sql", "Error registering account for '%s': %s", pData->m_aName, pError);
-        }
-        return false;
-    }
-
-    return true;
-}
-
-bool CScoreWorker::ChangePasswordAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
-{
-    const auto *pData = dynamic_cast<const CSqlRegisterRequest *>(pGameData);
-    auto *pResult = dynamic_cast<CScorePlayerResult *>(pGameData->m_pResult.get());
-
-    if (pResult != nullptr) {
-        pResult->SetVariant(CScorePlayerResult::PLAYER_INFO);
-    }
-
-    char aBuf[512];
-    str_format(aBuf, sizeof(aBuf), "UPDATE %s_accounts SET password = ? WHERE nickname = ?", pSqlServer->GetPrefix());
-    if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
-        return false;
-
-    pSqlServer->BindString(1, pData->m_aPassword);
-    pSqlServer->BindString(2, pData->m_aName);
-
-    int NumInserted;
-    if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize) || NumInserted != 1)
-    {
-        if (pResult != nullptr) {
-            str_copy(pResult->m_Data.m_aaMessages[0], "Внутренняя ошибка, попробуйте позже", sizeof(pResult->m_Data.m_aaMessages[0]));
-        } else {
-            dbg_msg("sql", "Error registering account for '%s': %s", pData->m_aName, pError);
-        }
-        return false;
-    }
-
-    return true;
-}
-
-bool CScoreWorker::ChangeRoleAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
-{
-    const auto *pData = dynamic_cast<const CSqlRegisterRequest *>(pGameData);
-    auto *pResult = dynamic_cast<CScorePlayerResult *>(pGameData->m_pResult.get());
-
-    if (pResult != nullptr) {
-        pResult->SetVariant(CScorePlayerResult::PLAYER_INFO);
-    }
-
-    char aBuf[512];
-    str_format(aBuf, sizeof(aBuf), "UPDATE %s_accounts SET role = ? WHERE nickname = ?", pSqlServer->GetPrefix());
-    if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
-        return false;
-
-    pSqlServer->BindInt(1, pData->m_Role);
-    pSqlServer->BindString(2, pData->m_aName);
-
-    int NumInserted;
-    if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize) || NumInserted != 1)
-    {
-        if (pResult != nullptr) {
-            str_copy(pResult->m_Data.m_aaMessages[0], "Внутренняя ошибка, попробуйте позже", sizeof(pResult->m_Data.m_aaMessages[0]));
-        } else {
-            dbg_msg("sql", "Error registering account for '%s': %s", pData->m_aName, pError);
-        }
-        return false;
-    }
-
-    return true;
-}
-
-bool CScoreWorker::ChangePointsAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
-{
-    const auto *pData = dynamic_cast<const CSqlRegisterRequest *>(pGameData);
-    auto *pResult = dynamic_cast<CScorePlayerResult *>(pGameData->m_pResult.get());
-
-    if (pResult != nullptr) {
-        pResult->SetVariant(CScorePlayerResult::PLAYER_INFO);
-    }
-
-    char aBuf[512];
-    str_format(aBuf, sizeof(aBuf), "UPDATE %s_accounts SET points = ? WHERE nickname = ?", pSqlServer->GetPrefix());
-    if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
-        return false;
-
-    pSqlServer->BindInt(1, pData->m_Points);
-    pSqlServer->BindString(2, pData->m_aName);
-
-    int NumInserted;
-    if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize) || NumInserted != 1)
-    {
-        if (pResult != nullptr) {
-            str_copy(pResult->m_Data.m_aaMessages[0], "Внутренняя ошибка, попробуйте позже", sizeof(pResult->m_Data.m_aaMessages[0]));
-        } else {
-            dbg_msg("sql", "Error registering account for '%s': %s", pData->m_aName, pError);
-        }
-        return false;
-    }
-
-    return true;
-}
-
-bool CScoreWorker::ChangeNetAdressAccount(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
-{
-    const auto *pData = dynamic_cast<const CSqlRegisterRequest *>(pGameData);
-    auto *pResult = dynamic_cast<CScorePlayerResult *>(pGameData->m_pResult.get());
-
-    if (pResult != nullptr) {
-        pResult->SetVariant(CScorePlayerResult::PLAYER_INFO);
-    }
-
-    char aBuf[512];
-    str_format(aBuf, sizeof(aBuf), "UPDATE %s_accounts SET netadress = ? WHERE nickname = ?", pSqlServer->GetPrefix());
-    if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
-        return false;
-
-    pSqlServer->BindString(1, pData->m_aNetAdress);
-    pSqlServer->BindString(2, pData->m_aName);
-
-    int NumInserted;
-    if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize) || NumInserted != 1)
-    {
-        if (pResult != nullptr) {
-            str_copy(pResult->m_Data.m_aaMessages[0], "Внутренняя ошибка, попробуйте позже", sizeof(pResult->m_Data.m_aaMessages[0]));
-        } else {
-            dbg_msg("sql", "Error registering account for '%s': %s", pData->m_aName, pError);
-        }
-        return false;
-    }
-
-    return true;
 }
