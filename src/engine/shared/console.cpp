@@ -180,125 +180,146 @@ int CConsole::ParseStart(CResult *pResult, const char *pString, int Length)
 	return 0;
 }
 
-int CConsole::ParseArgs(CResult *pResult, const char *pFormat)
+int CConsole::ParseArgs(CResult *pResult, const char *pFormat, bool IsColor)
 {
-	char *pStr = pResult->m_pArgsStart;
-	bool Optional = false;
+	char Command = *pFormat;
+	char *pStr;
+	int Optional = 0;
+	int Error = PARSEARGS_OK;
 
 	pResult->ResetVictim();
 
-	for(char Command = *pFormat; Command != '\0'; Command = NextParam(pFormat))
+	pStr = pResult->m_pArgsStart;
+
+	while(true)
 	{
+		if(!Command)
+			break;
+
 		if(Command == '?')
-		{
-			Optional = true;
-			continue;
-		}
-
-		pStr = str_skip_whitespaces(pStr);
-
-		if(*pStr == '\0') // error, non optional command needs value
-		{
-			if(!Optional)
-			{
-				return PARSEARGS_MISSING_VALUE;
-			}
-
-			while(Command)
-			{
-				if(Command == 'v')
-				{
-					pResult->SetVictim(CResult::VICTIM_ME);
-					break;
-				}
-				Command = NextParam(pFormat);
-			}
-			return PARSEARGS_OK;
-		}
-
-		// add token
-		if(*pStr == '"')
-		{
-			pStr++;
-			pResult->AddArgument(pStr);
-
-			char *pDst = pStr; // we might have to process escape data
-			while(pStr[0] != '"')
-			{
-				if(pStr[0] == '\\')
-				{
-					if(pStr[1] == '\\')
-						pStr++; // skip due to escape
-					else if(pStr[1] == '"')
-						pStr++; // skip due to escape
-				}
-				else if(pStr[0] == '\0')
-				{
-					return PARSEARGS_MISSING_VALUE; // return error
-				}
-
-				*pDst = *pStr;
-				pDst++;
-				pStr++;
-			}
-			*pDst = '\0';
-
-			pStr++;
-		}
+			Optional = 1;
 		else
 		{
-			pResult->AddArgument(pStr);
+			pStr = str_skip_whitespaces(pStr);
 
-			if(Command == 'r') // rest of the string
+			if(!(*pStr)) // error, non optional command needs value
 			{
-				return PARSEARGS_OK;
+				if(!Optional)
+				{
+					Error = PARSEARGS_MISSING_VALUE;
+					break;
+				}
+
+				while(Command)
+				{
+					if(Command == 'v')
+					{
+						pResult->SetVictim(CResult::VICTIM_ME);
+						break;
+					}
+					Command = NextParam(pFormat);
+				}
+				break;
 			}
 
-			pStr = str_skip_to_whitespace(pStr);
-			if(pStr[0] != '\0') // check for end of string
+			// add token
+			if(*pStr == '"')
 			{
-				pStr[0] = '\0';
+				char *pDst;
+				pStr++;
+				pResult->AddArgument(pStr);
+
+				pDst = pStr; // we might have to process escape data
+				while(true)
+				{
+					if(pStr[0] == '"')
+						break;
+					else if(pStr[0] == '\\')
+					{
+						if(pStr[1] == '\\')
+							pStr++; // skip due to escape
+						else if(pStr[1] == '"')
+							pStr++; // skip due to escape
+					}
+					else if(pStr[0] == 0)
+						return PARSEARGS_MISSING_VALUE; // return error
+
+					*pDst = *pStr;
+					pDst++;
+					pStr++;
+				}
+
+				// write null termination
+				*pDst = 0;
+
 				pStr++;
 			}
+			else
+			{
+				char *pVictim = nullptr;
 
-			// validate arguments
-			if(Command == 'v')
-			{
-				pResult->SetVictim(pResult->GetString(pResult->NumArguments() - 1));
-			}
-			else if(Command == 'i')
-			{
-				int Value;
-				if(!str_toint(pResult->GetString(pResult->NumArguments() - 1), &Value) ||
-					Value == std::numeric_limits<int>::max() ||
-					Value == std::numeric_limits<int>::min())
+				pResult->AddArgument(pStr);
+				if(Command == 'v')
 				{
-					return PARSEARGS_INVALID_INTEGER;
+					pVictim = pStr;
+				}
+
+				if(Command == 'r') // rest of the string
+					break;
+				else if(Command == 'v' || Command == 'i' || Command == 'f' || Command == 's')
+					pStr = str_skip_to_whitespace(pStr);
+
+				if(pStr[0] != 0) // check for end of string
+				{
+					pStr[0] = 0;
+					pStr++;
+				}
+
+				// validate args
+				if(IsColor)
+				{
+					auto Color = ColorParse(pResult->GetString(pResult->NumArguments() - 1), 0.0f);
+					if(!Color.has_value())
+					{
+						Error = PARSEARGS_INVALID_COLOR;
+						break;
+					}
+				}
+				if(Command == 'i')
+				{
+					if(!IsColor)
+					{
+						int Value;
+						if(!str_toint(pResult->GetString(pResult->NumArguments() - 1), &Value) ||
+							Value == std::numeric_limits<int>::max() || Value == std::numeric_limits<int>::min())
+						{
+							Error = PARSEARGS_INVALID_INTEGER;
+							break;
+						}
+					}
+				}
+				else if(Command == 'f')
+				{
+					float Value;
+					if(!str_tofloat(pResult->GetString(pResult->NumArguments() - 1), &Value) ||
+						Value == std::numeric_limits<float>::max() || Value == std::numeric_limits<float>::min())
+					{
+						Error = PARSEARGS_INVALID_FLOAT;
+						break;
+					}
+				}
+
+				if(pVictim)
+				{
+					pResult->SetVictim(pVictim);
 				}
 			}
-			else if(Command == 'c')
-			{
-				auto Color = ColorParse(pResult->GetString(pResult->NumArguments() - 1), 0.0f);
-				if(!Color.has_value())
-				{
-					return PARSEARGS_INVALID_COLOR;
-				}
-			}
-			else if(Command == 'f')
-			{
-				float Value;
-				if(!str_tofloat(pResult->GetString(pResult->NumArguments() - 1), &Value) ||
-					Value == std::numeric_limits<float>::max() ||
-					Value == std::numeric_limits<float>::min())
-				{
-					return PARSEARGS_INVALID_FLOAT;
-				}
-			}
-			// 's' and unknown commands are handled as strings
 		}
+		// fetch next command
+		Command = NextParam(pFormat);
 	}
 
-	return PARSEARGS_OK;
+	return Error;
 }
 
 char CConsole::NextParam(const char *&pFormat)
@@ -363,7 +384,7 @@ void CConsole::Print(int Level, const char *pFrom, const char *pStr, ColorRGBA P
 {
 	LEVEL LogLevel = IConsole::ToLogLevel(Level);
 	// if console colors are not enabled or if the color is pure white, use default terminal color
-	if(g_Config.m_ConsoleEnableColors && PrintColor != CONSOLE_DEFAULT_COLOR)
+	if(g_Config.m_ConsoleEnableColors && PrintColor != gs_ConsoleDefaultColor)
 	{
 		log_log_color(LogLevel, ColorToLogColor(PrintColor), pFrom, "%s", pStr);
 	}
@@ -548,20 +569,25 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 
 				if(Stroke || IsStrokeCommand)
 				{
-					if(int Error = ParseArgs(&Result, pCommand->m_pParams))
+					bool IsColor = false;
+					{
+						FCommandCallback pfnCallback = pCommand->m_pfnCallback;
+						void *pUserData = pCommand->m_pUserData;
+						TraverseChain(&pfnCallback, &pUserData);
+						IsColor = pfnCallback == &SColorConfigVariable::CommandCallback;
+					}
+
+					if(int Error = ParseArgs(&Result, pCommand->m_pParams, IsColor))
 					{
 						char aBuf[CMDLINE_LENGTH + 64];
 						if(Error == PARSEARGS_INVALID_INTEGER)
-							str_format(aBuf, sizeof(aBuf), "%s is not a valid integer.", Result.GetString(Result.NumArguments() - 1));
-						else if(Error == PARSEARGS_INVALID_COLOR)
-							str_format(aBuf, sizeof(aBuf), "%s is not a valid color.", Result.GetString(Result.NumArguments() - 1));
+							str_format(aBuf, sizeof(aBuf), "%s не является допустимым целочисленым числом", Result.GetString(Result.NumArguments() - 1));
 						else if(Error == PARSEARGS_INVALID_FLOAT)
-							str_format(aBuf, sizeof(aBuf), "%s is not a valid decimal number.", Result.GetString(Result.NumArguments() - 1));
-						else
-							str_format(aBuf, sizeof(aBuf), "Invalid arguments. Usage: %s %s", pCommand->m_pName, pCommand->m_pParams);
+							str_format(aBuf, sizeof(aBuf), "%s не является допустимым десятичным числом", Result.GetString(Result.NumArguments() - 1));
+
 						Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 					}
-					else if(m_StoreCommands && pCommand->m_Flags & CFGFLAG_STORE)
+                                        else if(m_StoreCommands && pCommand->m_Flags & CFGFLAG_STORE)
 					{
 						m_vExecutionQueue.emplace_back(pCommand, Result);
 					}
@@ -613,10 +639,7 @@ void CConsole::ExecuteLineStroked(int Stroke, const char *pStr, int ClientId, bo
 			if(!m_pfnUnknownCommandCallback(pStr, m_pUnknownCommandUserdata))
 			{
 				char aBuf[CMDLINE_LENGTH + 32];
-				if(m_FlagMask & CFGFLAG_CHAT)
-					str_format(aBuf, sizeof(aBuf), "No such command: %s. Use /cmdlist for a list of all commands.", Result.m_pCommand);
-				else
-					str_format(aBuf, sizeof(aBuf), "No such command: %s.", Result.m_pCommand);
+                                str_format(aBuf, sizeof(aBuf), "Команда /%s не найдена", Result.m_pCommand);
 				Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 			}
 		}
@@ -772,16 +795,21 @@ void CConsole::ConCommandAccess(IResult *pResult, void *pUser)
 	pConsole->Print(OUTPUT_LEVEL_STANDARD, "console", aBuf);
 }
 
-void CConsole::PrintCommandList(EAccessLevel MinAccessLevel, int ExcludeFlagMask)
+void CConsole::ConCommandStatus(IResult *pResult, void *pUser)
 {
+	CConsole *pConsole = static_cast<CConsole *>(pUser);
 	char aBuf[240] = "";
 	int Used = 0;
-
-	for(CCommand *pCommand = m_pFirstCommand; pCommand; pCommand = pCommand->Next())
+	std::optional<EAccessLevel> AccessLevel = AccessLevelToEnum(pResult->GetString(0));
+	if(!AccessLevel.has_value())
 	{
-		if((pCommand->m_Flags & m_FlagMask) &&
-			!(pCommand->m_Flags & ExcludeFlagMask) &&
-			pCommand->GetAccessLevel() >= MinAccessLevel)
+		log_error("console", "Invalid access level '%s'. Allowed values are admin, moderator, helper and all.", pResult->GetString(0));
+		return;
+	}
+
+	for(CCommand *pCommand = pConsole->m_pFirstCommand; pCommand; pCommand = pCommand->Next())
+	{
+		if(pCommand->m_Flags & pConsole->m_FlagMask && pCommand->GetAccessLevel() >= AccessLevel.value())
 		{
 			int Length = str_length(pCommand->m_pName);
 			if(Used + Length + 2 < (int)(sizeof(aBuf)))
@@ -796,32 +824,24 @@ void CConsole::PrintCommandList(EAccessLevel MinAccessLevel, int ExcludeFlagMask
 			}
 			else
 			{
-				Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
+				pConsole->Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 				str_copy(aBuf, pCommand->m_pName);
 				Used = Length;
 			}
 		}
 	}
 	if(Used > 0)
-		Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
-}
-
-void CConsole::ConCommandStatus(IResult *pResult, void *pUser)
-{
-	CConsole *pConsole = static_cast<CConsole *>(pUser);
-	std::optional<EAccessLevel> AccessLevel = AccessLevelToEnum(pResult->GetString(0));
-	if(!AccessLevel.has_value())
-	{
-		log_error("console", "Invalid access level '%s'. Allowed values are admin, moderator, helper and all.", pResult->GetString(0));
-		return;
-	}
-	pConsole->PrintCommandList(AccessLevel.value(), 0);
+		pConsole->Print(OUTPUT_LEVEL_STANDARD, "chatresp", aBuf);
 }
 
 void CConsole::ConUserCommandStatus(IResult *pResult, void *pUser)
 {
 	CConsole *pConsole = static_cast<CConsole *>(pUser);
-	pConsole->PrintCommandList(EAccessLevel::USER, CMDFLAG_PRACTICE);
+	CResult Result(pResult->m_ClientId);
+	Result.m_pCommand = "access_status";
+	Result.AddArgument(AccessLevelToString(EAccessLevel::USER));
+
+	CConsole::ConCommandStatus(&Result, pConsole);
 }
 
 void CConsole::TraverseChain(FCommandCallback *ppfnCallback, void **ppUserData)
@@ -855,7 +875,7 @@ CConsole::CConsole(int FlagMask)
 
 	Register("access_level", "s[command] ?s['admin'|'moderator'|'helper'|'all']", CFGFLAG_SERVER, ConCommandAccess, this, "Specify command accessibility for given access level");
 	Register("access_status", "s['admin'|'moderator'|'helper'|'all']", CFGFLAG_SERVER, ConCommandStatus, this, "List all commands which are accessible for given access level");
-	Register("cmdlist", "", CFGFLAG_SERVER | CFGFLAG_CHAT, ConUserCommandStatus, this, "List all commands which are accessible for users");
+	// Register("cmdlist", "", CFGFLAG_SERVER | CFGFLAG_CHAT, ConUserCommandStatus, this, "List all commands which are accessible for users");
 
 	// DDRace
 

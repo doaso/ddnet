@@ -1,8 +1,7 @@
 #ifndef ENGINE_CLIENT_GRAPHICS_THREADED_H
 #define ENGINE_CLIENT_GRAPHICS_THREADED_H
 
-#include <base/dbg.h>
-#include <base/sphore.h>
+#include <base/system.h>
 
 #include <engine/graphics.h>
 #include <engine/shared/config.h>

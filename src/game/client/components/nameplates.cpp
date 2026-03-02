@@ -1,6 +1,5 @@
 #include "nameplates.h"
 
-#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/shared/protocol7.h>
@@ -79,6 +78,8 @@ public:
 
 using PartsVector = std::vector<std::unique_ptr<CNamePlatePart>>;
 
+static constexpr ColorRGBA s_OutlineColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f);
+
 class CNamePlatePartText : public CNamePlatePart
 {
 protected:
@@ -141,7 +142,7 @@ public:
 
 		ColorRGBA OutlineColor, Color;
 		Color = m_Color;
-		OutlineColor = ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f * m_Color.a);
+		OutlineColor = s_OutlineColor.WithMultipliedAlpha(m_Color.a);
 		This.TextRender()->RenderTextContainer(m_TextContainerIndex,
 			Color, OutlineColor,
 			Pos.x - Size().x / 2.0f, Pos.y - Size().y / 2.0f);
@@ -325,7 +326,7 @@ protected:
 		CTextCursor Cursor;
 		This.TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 		Cursor.m_FontSize = m_FontSize;
-		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, FontIcon::HEART);
+		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, FontIcons::FONT_ICON_HEART);
 		This.TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 	}
 

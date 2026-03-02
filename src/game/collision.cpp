@@ -840,6 +840,23 @@ bool CCollision::TileExists(int Index) const
 	if(Index < 0)
 		return false;
 
+        switch(m_pTiles[Index].m_Index)
+        {
+                case TILE_BLOCK_ENABLE:
+                case TILE_BLOCK_DISABLE:
+                case TILE_GREEN_ZONE_ENABLE:
+                case TILE_GREEN_ZONE_DISABLE:
+                case TILE_LVL5_ZONE:
+                case TILE_LVL10_ZONE:
+                case TILE_LVL25_ZONE:
+                case TILE_LVL50_ZONE:
+                case TILE_LVL100_ZONE:
+                case TILE_FARM_ZONE_X1:
+                case TILE_FARM_ZONE_X2:
+                case TILE_FARM_ZONE_X3:
+                    return true;
+        }
+
 	if((m_pTiles[Index].m_Index >= TILE_FREEZE && m_pTiles[Index].m_Index <= TILE_TELE_LASER_DISABLE) || (m_pTiles[Index].m_Index >= TILE_LFREEZE && m_pTiles[Index].m_Index <= TILE_LUNFREEZE))
 		return true;
 	if(m_pFront && ((m_pFront[Index].m_Index >= TILE_FREEZE && m_pFront[Index].m_Index <= TILE_TELE_LASER_DISABLE) || (m_pFront[Index].m_Index >= TILE_LFREEZE && m_pFront[Index].m_Index <= TILE_LUNFREEZE)))

@@ -116,7 +116,7 @@ void CGameTeams::OnCharacterStart(int ClientId)
 			str_format(
 				aBuf,
 				sizeof(aBuf),
-				"%s has finished and didn't go through start yet, wait for them or join another team.",
+				"%s has finished and didn't go through start yet, wait for him or join another team.",
 				Server()->ClientName(i));
 			GameServer()->SendChatTarget(ClientId, aBuf);
 			m_aLastChat[ClientId] = Tick;
@@ -732,7 +732,7 @@ void CGameTeams::OnTeamFinish(int Team, CPlayer **Players, unsigned int Size, in
 		{
 			SetForceCharacterTeam(Players[i]->GetCid(), TEAM_FLOCK);
 			char aBuf[512];
-			str_format(aBuf, sizeof(aBuf), "'%s' joined team 0",
+			str_format(aBuf, sizeof(aBuf), "%s вошел в команду 0",
 				GameServer()->Server()->ClientName(Players[i]->GetCid()));
 			GameServer()->SendChat(-1, TEAM_ALL, aBuf);
 		}
@@ -829,7 +829,7 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 
 	bool NeedToSendNewServerRecord = false;
 	// update server best time
-	if(!GameServer()->m_pController->m_CurrentRecord.has_value())
+	if(GameServer()->m_pController->m_CurrentRecord == 0)
 	{
 		GameServer()->Score()->LoadBestTime();
 	}
@@ -1189,10 +1189,11 @@ void CGameTeams::OnCharacterSpawn(int ClientId)
 
 	if(!IsValidTeamNumber(Team) || !m_aTeamLocked[Team])
 	{
-		if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO)
-			SetForceCharacterTeam(ClientId, TEAM_FLOCK);
-		else
+		if(g_Config.m_SvTeam != SV_TEAM_FORCED_SOLO) {
+			// SetForceCharacterTeam(ClientId, TEAM_FLOCK);
+                } else {
 			SetForceCharacterTeam(ClientId, ClientId); // initialize team
+                }
 		if(!m_aTeamFlock[Team])
 			CheckTeamFinished(Team);
 	}
@@ -1235,21 +1236,7 @@ void CGameTeams::OnCharacterDeath(int ClientId, int Weapon)
 			ChangeTeamState(Team, ETeamState::OPEN);
 
 			if(!m_pGameContext->PracticeByDefault())
-			{
-				if(!g_Config.m_SvPauseable)
-				{
-					for(int ClientId1 = 0; ClientId1 < MAX_CLIENTS; ClientId1++)
-					{
-						if(m_Core.Team(ClientId1) == Team)
-						{
-							CPlayer *pPlayer = GameServer()->m_apPlayers[ClientId1];
-							if(pPlayer && pPlayer->IsPaused() == -1 * CPlayer::PAUSE_SPEC)
-								pPlayer->Pause(CPlayer::PAUSE_PAUSED, true);
-						}
-					}
-				}
 				m_aPractice[Team] = false;
-			}
 
 			if(Count(Team) > 1)
 			{
@@ -1283,7 +1270,7 @@ void CGameTeams::OnCharacterDeath(int ClientId, int Weapon)
 			m_aTeamUnfinishableKillTick[Team] = Server()->Tick() + 60 * Server()->TickSpeed();
 			ChangeTeamState(Team, ETeamState::STARTED_UNFINISHABLE);
 		}
-		SetForceCharacterTeam(ClientId, TEAM_FLOCK);
+		// SetForceCharacterTeam(ClientId, TEAM_FLOCK);
 		if(!m_aTeamFlock[m_Core.Team(ClientId)])
 			CheckTeamFinished(Team);
 	}

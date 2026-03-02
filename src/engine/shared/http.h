@@ -92,9 +92,9 @@ class CHttpRequest : public IHttpRequest
 	int64_t m_IfModifiedSince = -1;
 	REQUEST m_Type = REQUEST::GET;
 
-	std::optional<SHA256_DIGEST> m_ActualSha256;
+	SHA256_DIGEST m_ActualSha256 = SHA256_ZEROED;
 	SHA256_CTX m_ActualSha256Ctx;
-	std::optional<SHA256_DIGEST> m_ExpectedSha256;
+	SHA256_DIGEST m_ExpectedSha256 = SHA256_ZEROED;
 
 	bool m_WriteToMemory = true;
 	bool m_WriteToFile = false;

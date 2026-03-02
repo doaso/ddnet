@@ -39,6 +39,7 @@ std::array<vec2, CMenuBackground::NUM_POS> GenerateMenuBackgroundPositions()
 	Positions[CMenuBackground::POS_SETTINGS_SOUND] = vec2(1000.0f, 1000.0f);
 	Positions[CMenuBackground::POS_SETTINGS_DDNET] = vec2(1200.0f, 200.0f);
 	Positions[CMenuBackground::POS_SETTINGS_ASSETS] = vec2(500.0f, 500.0f);
+	Positions[CMenuBackground::POS_SETTINGS_DLC] = vec2(1200.0f, 200.0f);
 	for(int i = 0; i < CMenuBackground::POS_BROWSER_CUSTOM_NUM; ++i)
 		Positions[CMenuBackground::POS_BROWSER_CUSTOM0 + i] = vec2(500.0f + (75.0f * (float)i), 650.0f - (75.0f * (float)i));
 	for(int i = 0; i < CMenuBackground::POS_SETTINGS_RESERVED_NUM; ++i)
@@ -67,6 +68,11 @@ CMenuBackground::CMenuBackground() :
 	m_Loading = false;
 }
 
+CBackgroundEngineMap *CMenuBackground::CreateBGMap()
+{
+	return new CMenuMap;
+}
+
 void CMenuBackground::OnInterfacesInit(CGameClient *pClient)
 {
 	CComponentInterfaces::OnInterfacesInit(pClient);
@@ -76,11 +82,12 @@ void CMenuBackground::OnInterfacesInit(CGameClient *pClient)
 
 void CMenuBackground::OnInit()
 {
-	m_pBackgroundMap = CreateMap();
-	m_pMap = m_pBackgroundMap.get();
+	m_pBackgroundMap = CreateBGMap();
+	m_pMap = m_pBackgroundMap;
 
 	m_IsInit = true;
 
+	Kernel()->RegisterInterface<CMenuMap>((CMenuMap *)m_pBackgroundMap);
 	if(g_Config.m_ClMenuMap[0] != '\0')
 		LoadMenuBackground();
 
@@ -167,11 +174,11 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 	if(!m_IsInit)
 		return;
 
-	if(m_Loaded && m_pMap == m_pBackgroundMap.get())
+	if(m_Loaded && m_pMap == m_pBackgroundMap)
 		m_pMap->Unload();
 
 	m_Loaded = false;
-	m_pMap = m_pBackgroundMap.get();
+	m_pMap = m_pBackgroundMap;
 	m_pLayers = m_pBackgroundLayers;
 	m_pImages = m_pBackgroundImages;
 
@@ -228,7 +235,7 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		if(!m_Loaded && ((HasDayHint && IsDaytime) || (HasNightHint && !IsDaytime)))
 		{
 			str_format(aBuf, sizeof(aBuf), "themes/%s_%s.map", pMenuMap, IsDaytime ? "day" : "night");
-			if(m_pMap->Load(pMenuMap, Storage(), aBuf, IStorage::TYPE_ALL))
+			if(m_pMap->Load(aBuf, IStorage::TYPE_ALL))
 			{
 				m_Loaded = true;
 			}
@@ -237,7 +244,7 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		if(!m_Loaded)
 		{
 			str_format(aBuf, sizeof(aBuf), "themes/%s.map", pMenuMap);
-			if(m_pMap->Load(pMenuMap, Storage(), aBuf, IStorage::TYPE_ALL))
+			if(m_pMap->Load(aBuf, IStorage::TYPE_ALL))
 			{
 				m_Loaded = true;
 			}
@@ -246,7 +253,7 @@ void CMenuBackground::LoadMenuBackground(bool HasDayHint, bool HasNightHint)
 		if(!m_Loaded && ((HasDayHint && !IsDaytime) || (HasNightHint && IsDaytime)))
 		{
 			str_format(aBuf, sizeof(aBuf), "themes/%s_%s.map", pMenuMap, IsDaytime ? "night" : "day");
-			if(m_pMap->Load(pMenuMap, Storage(), aBuf, IStorage::TYPE_ALL))
+			if(m_pMap->Load(aBuf, IStorage::TYPE_ALL))
 			{
 				m_Loaded = true;
 			}

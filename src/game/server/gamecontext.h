@@ -7,8 +7,6 @@
 #include "gameworld.h"
 #include "teehistorian.h"
 
-#include <base/types.h>
-
 #include <engine/console.h>
 #include <engine/server.h>
 
@@ -54,12 +52,10 @@ class CScore;
 class CUnpacker;
 class IAntibot;
 class IGameController;
-class IMap;
 class IEngine;
 class IStorage;
 struct CAntibotRoundData;
 struct CScoreRandomMapResult;
-struct CScorePlayerResult;
 
 struct CSnapContext
 {
@@ -117,7 +113,6 @@ class CGameContext : public IGameServer
 	IEngine *m_pEngine;
 	IStorage *m_pStorage;
 	IAntibot *m_pAntibot;
-	std::unique_ptr<IMap> m_pMap;
 	CLayers m_Layers;
 	CCollision m_Collision;
 	protocol7::CNetObjHandler m_NetObjHandler7;
@@ -198,8 +193,6 @@ public:
 	IConsole *Console() { return m_pConsole; }
 	IEngine *Engine() { return m_pEngine; }
 	IStorage *Storage() { return m_pStorage; }
-	IMap *Map() override { return m_pMap.get(); }
-	const IMap *Map() const override { return m_pMap.get(); }
 	CCollision *Collision() { return &m_Collision; }
 	CTuningParams *GlobalTuning() { return &m_aTuningList[0]; }
 	CTuningParams *TuningList() { return m_aTuningList; }
@@ -278,6 +271,8 @@ public:
 	CVoteOptionServer *m_pVoteOptionLast;
 
 	// helper functions
+        void CreateFlag(vec2 Pos);
+        void CreatePickup(vec2 Pos, int Type, int SubType);
 	void CreateDamageInd(vec2 Pos, float AngleMod, int Amount, CClientMask Mask = CClientMask().set());
 	void CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamage, int ActivatedTeam, CClientMask Mask = CClientMask().set());
 	void CreateHammerHit(vec2 Pos, CClientMask Mask = CClientMask().set());
@@ -306,7 +301,7 @@ public:
 	void SendStartWarning(int ClientId, const char *pMessage);
 	void SendEmoticon(int ClientId, int Emoticon, int TargetClientId) const;
 	void SendWeaponPickup(int ClientId, int Weapon) const;
-	void SendMotd(int ClientId) const;
+	void SendMotd(const char* pMotd, int ClientId) const;
 	void SendSettings(int ClientId) const;
 	void SendServerAlert(const char *pMessage);
 	void SendModeratorAlert(const char *pMessage, int ToClientId);
@@ -334,7 +329,7 @@ public:
 	void OnShutdown(void *pPersistentData) override;
 
 	void OnTick() override;
-	void OnSnap(int ClientId, bool GlobalSnap, bool RecordingDemo) override;
+	void OnSnap(int ClientId, bool GlobalSnap) override;
 	void OnPostGlobalSnap() override;
 
 	void UpdatePlayerMaps();
@@ -417,10 +412,6 @@ public:
 
 	std::shared_ptr<CScoreRandomMapResult> m_SqlRandomMapResult;
 
-	// cached map info from database
-	std::shared_ptr<CScorePlayerResult> m_pLoadMapInfoResult;
-	char m_aMapInfoMessage[512];
-
 private:
 	// starting 1 to make 0 the special value "no client id"
 	uint32_t m_NextUniqueClientId = 1;
@@ -429,40 +420,8 @@ private:
 
 	// DDRace Console Commands
 
-	static void ConKillPlayer(IConsole::IResult *pResult, void *pUserData);
-
-	static void ConNinja(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnNinja(IConsole::IResult *pResult, void *pUserData);
-	static void ConEndlessHook(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnEndlessHook(IConsole::IResult *pResult, void *pUserData);
-	static void ConSolo(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnSolo(IConsole::IResult *pResult, void *pUserData);
-	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnfreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConDeep(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnDeep(IConsole::IResult *pResult, void *pUserData);
-	static void ConLiveFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnLiveFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnSuper(IConsole::IResult *pResult, void *pUserData);
-	static void ConSuper(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleInvincible(IConsole::IResult *pResult, void *pUserData);
-	static void ConShotgun(IConsole::IResult *pResult, void *pUserData);
-	static void ConGrenade(IConsole::IResult *pResult, void *pUserData);
-	static void ConLaser(IConsole::IResult *pResult, void *pUserData);
-	static void ConJetpack(IConsole::IResult *pResult, void *pUserData);
-	static void ConEndlessJump(IConsole::IResult *pResult, void *pUserData);
 	static void ConSetJumps(IConsole::IResult *pResult, void *pUserData);
-	static void ConWeapons(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnShotgun(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnGrenade(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnLaser(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnJetpack(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnEndlessJump(IConsole::IResult *pResult, void *pUserData);
-	static void ConSetSwitch(IConsole::IResult *pResult, void *pUserData);
-	static void ConUnWeapons(IConsole::IResult *pResult, void *pUserData);
-	static void ConAddWeapon(IConsole::IResult *pResult, void *pUserData);
-	static void ConRemoveWeapon(IConsole::IResult *pResult, void *pUserData);
-	void ModifyWeapons(IConsole::IResult *pResult, void *pUserData, int Weapon, bool Remove);
 	void MoveCharacter(int ClientId, int X, int Y, bool Raw = false);
 	static void ConGoLeft(IConsole::IResult *pResult, void *pUserData);
 	static void ConGoRight(IConsole::IResult *pResult, void *pUserData);
@@ -476,12 +435,59 @@ private:
 	void Teleport(CCharacter *pChr, vec2 Pos);
 	static void ConTeleport(IConsole::IResult *pResult, void *pUserData);
 
-	static void ConCredits(IConsole::IResult *pResult, void *pUserData);
-	static void ConInfo(IConsole::IResult *pResult, void *pUserData);
-	static void ConHelp(IConsole::IResult *pResult, void *pUserData);
-	static void ConSettings(IConsole::IResult *pResult, void *pUserData);
+	static void ConCmdList(IConsole::IResult *pResult, void *pUserData);
+	static void ConACmdList(IConsole::IResult *pResult, void *pUserData);
 	static void ConRules(IConsole::IResult *pResult, void *pUserData);
+	static void ConLogin(IConsole::IResult *pResult, void *pUserData);
+	static void ConRegister(IConsole::IResult *pResult, void *pUserData);
+	static void ConPasswd(IConsole::IResult *pResult, void *pUserData);
+	static void ConPay(IConsole::IResult *pResult, void *pUserData);
+	static void ConDrop(IConsole::IResult *pResult, void *pUserData);
+	static void ConRankC(IConsole::IResult *pResult, void *pUserData);
+	static void ConShop(IConsole::IResult *pResult, void *pUserData);
+	static void ConDonate(IConsole::IResult *pResult, void *pUserData);
+	static void ConDuel(IConsole::IResult *pResult, void *pUserData);
+	static void ConOrel(IConsole::IResult *pResult, void *pUserData);
+	static void ConReshka(IConsole::IResult *pResult, void *pUserData);
+	static void ConYes(IConsole::IResult *pResult, void *pUserData);
+	static void ConNo(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConEffect(IConsole::IResult *pResult, void *pUserData);
+	static void ConGiveGun(IConsole::IResult *pResult, void *pUserData);
+	static void ConRemoveGun(IConsole::IResult *pResult, void *pUserData);
+	static void ConInfJump(IConsole::IResult *pResult, void *pUserData);
+	static void ConInfHook(IConsole::IResult *pResult, void *pUserData);
+	static void ConJetpack(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConSolo(IConsole::IResult *pResult, void *pUserData);
+	static void ConFreeze(IConsole::IResult *pResult, void *pUserData);
+	static void ConSuper(IConsole::IResult *pResult, void *pUserData);
+	static void ConInvincible(IConsole::IResult *pResult, void *pUserData);
+	static void ConColision(IConsole::IResult *pResult, void *pUserData);
+	static void ConHookOthers(IConsole::IResult *pResult, void *pUserData);
+	static void ConHitOthers(IConsole::IResult *pResult, void *pUserData);
 	static void ConKill(IConsole::IResult *pResult, void *pUserData);
+	static void ConGoto(IConsole::IResult *pResult, void *pUserData);
+	static void ConGetHere(IConsole::IResult *pResult, void *pUserData);
+	static void ConTPSpec(IConsole::IResult *pResult, void *pUserData);
+
+        static void ConStats(IConsole::IResult *pResult, void *pUserData);
+        static void ConBroadcastC(IConsole::IResult *pResult, void *pUserData);
+        static void ConMotdC(IConsole::IResult *pResult, void *pUserData);
+        static void ConFakeMsg(IConsole::IResult *pResult, void *pUserData);
+        static void ConKickC(IConsole::IResult *pResult, void *pUserData);
+        static void ConMuteC(IConsole::IResult *pResult, void *pUserData);
+        static void ConUnMuteC(IConsole::IResult *pResult, void *pUserData);
+        static void ConBanC(IConsole::IResult *pResult, void *pUserData);
+
+	static void ConSetTempAdminLevel(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetAdminLevel(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetLevel(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetPoints(IConsole::IResult *pResult, void *pUserData);
+	static void ConSetDonatRubles(IConsole::IResult *pResult, void *pUserData);
+
+	void Help(IConsole::IResult *pResult, void *pUserData, const char *pCommand);
+	static void ConSettings(IConsole::IResult *pResult, void *pUserData);
 	static void ConTogglePause(IConsole::IResult *pResult, void *pUserData);
 	static void ConTogglePauseVoted(IConsole::IResult *pResult, void *pUserData);
 	static void ConToggleSpec(IConsole::IResult *pResult, void *pUserData);
@@ -537,39 +543,7 @@ private:
 	// Chat commands for practice mode
 	static void ConPracticeToTeleporter(IConsole::IResult *pResult, void *pUserData);
 	static void ConPracticeToCheckTeleporter(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnSolo(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeSolo(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnDeep(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeDeep(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnLiveFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeLiveFreeze(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeShotgun(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeGrenade(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeLaser(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeJetpack(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeEndlessJump(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeSetJumps(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeWeapons(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnShotgun(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnGrenade(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnLaser(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnJetpack(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnEndlessJump(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnWeapons(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeNinja(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnNinja(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeEndlessHook(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeUnEndlessHook(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeSetSwitch(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleInvincible(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleCollision(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleHookCollision(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeToggleHitOthers(IConsole::IResult *pResult, void *pUserData);
 
-	static void ConPracticeAddWeapon(IConsole::IResult *pResult, void *pUserData);
-	static void ConPracticeRemoveWeapon(IConsole::IResult *pResult, void *pUserData);
-
-	static void ConProtectedKill(IConsole::IResult *pResult, void *pUserData);
 	static void ConModerate(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConList(IConsole::IResult *pResult, void *pUserData);

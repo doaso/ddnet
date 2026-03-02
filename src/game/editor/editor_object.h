@@ -2,7 +2,6 @@
 #define GAME_EDITOR_EDITOR_OBJECT_H
 
 class CEditor;
-class CEditorMap;
 class IInput;
 class IClient;
 class CConfig;
@@ -28,8 +27,6 @@ public:
 
 	CEditor *Editor();
 	const CEditor *Editor() const;
-	CEditorMap *Map();
-	const CEditorMap *Map() const;
 	IInput *Input();
 	const IInput *Input() const;
 	IClient *Client();

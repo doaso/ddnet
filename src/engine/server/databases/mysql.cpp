@@ -3,8 +3,7 @@
 #include <engine/server/databases/connection_pool.h>
 
 #if defined(CONF_MYSQL)
-#include <base/sphore.h>
-#include <base/system.h>
+#include <base/tl/threading.h>
 
 #include <engine/console.h>
 
@@ -288,11 +287,13 @@ bool CMysqlConnection::ConnectImpl()
 
 	if(m_Config.m_Setup)
 	{
+		char aCreateUsers[1024];
 		char aCreateRace[1024];
 		char aCreateTeamrace[1024];
 		char aCreateMaps[1024];
 		char aCreateSaves[1024];
 		char aCreatePoints[1024];
+		FormatCreateUsers(aCreateRace, sizeof(aCreateRace), /* Backup */ false);
 		FormatCreateRace(aCreateRace, sizeof(aCreateRace), /* Backup */ false);
 		FormatCreateTeamrace(aCreateTeamrace, sizeof(aCreateTeamrace), "VARBINARY(16)", /* Backup */ false);
 		FormatCreateMaps(aCreateMaps, sizeof(aCreateMaps));

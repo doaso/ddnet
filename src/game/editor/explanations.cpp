@@ -328,6 +328,58 @@ const char *CExplanations::ExplainDDNet(int Tile, int Layer)
 		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
 			return "HOOK OTHERS: You can hook others.";
 		break;
+	case TILE_BLOCK_ENABLE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+			return "BLOCK: ENABLE";
+		break;
+	case TILE_BLOCK_DISABLE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+			return "BLOCK: DISABLE";
+		if(Layer == LAYER_SWITCH)
+			return "BLOCK: SWITCH";
+                break;
+	case TILE_GREEN_ZONE_ENABLE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+			return "GREEN ZONE: ENABLE";
+                break;
+	case TILE_GREEN_ZONE_DISABLE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+			return "GREEN ZONE: DISABLE";
+		if(Layer == LAYER_SWITCH)
+			return "GREEN ZONE: SWITCH";
+                break;
+	case TILE_LVL5_ZONE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "LVL ZONE 5: NONE";
+                break;
+        case TILE_LVL10_ZONE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "LVL ZONE 10: NONE";
+                break;
+        case TILE_LVL25_ZONE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "LVL ZONE 25: NONE";
+                break;
+        case TILE_LVL50_ZONE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "LVL ZONE 50: NONE";
+                break;
+        case TILE_LVL100_ZONE:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "LVL ZONE 100: NONE";
+                break;
+        case TILE_FARM_ZONE_X1:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "FARM ZONE X1: NONE";
+                break;
+        case TILE_FARM_ZONE_X2:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "FARM ZONE X2: NONE";
+                break;
+        case TILE_FARM_ZONE_X3:
+		if(Layer == LAYER_GAME || Layer == LAYER_FRONT)
+                        return "FARM ZONE X3: NONE";
+                break;
 	case TILE_CREDITS_1:
 	case TILE_CREDITS_2:
 	case TILE_CREDITS_3:

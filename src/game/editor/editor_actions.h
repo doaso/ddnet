@@ -9,7 +9,7 @@
 #include <game/editor/mapitems/layer_tele.h>
 #include <game/editor/mapitems/layer_tiles.h>
 #include <game/editor/mapitems/layer_tune.h>
-#include <game/editor/quad_art.h>
+#include <game/editor/quadart.h>
 #include <game/mapitems.h>
 
 #include <memory>
@@ -387,7 +387,7 @@ public:
 		ADD,
 		EDIT,
 		MOVE_UP,
-		MOVE_DOWN,
+		MOVE_DOWN
 	};
 
 	CEditorCommandAction(CEditorMap *pMap, EType Type, int *pSelectedCommandIndex, int CommandIndex, const char *pPreviousCommand = nullptr, const char *pCurrentCommand = nullptr);
@@ -438,7 +438,7 @@ public:
 	enum class EEditType
 	{
 		SYNC,
-		ORDER,
+		ORDER
 	};
 
 	CEditorActionEnvelopeEdit(CEditorMap *pMap, int EnvelopeIndex, EEditType EditType, int Previous, int Current);
@@ -451,6 +451,7 @@ private:
 	EEditType m_EditType;
 	int m_Previous;
 	int m_Current;
+	std::shared_ptr<CEnvelope> m_pEnv;
 };
 
 class CEditorActionEnvelopeEditPointTime : public IEditorAction
@@ -466,6 +467,7 @@ private:
 	int m_PointIndex;
 	CFixedTime m_Previous;
 	CFixedTime m_Current;
+	std::shared_ptr<CEnvelope> m_pEnv;
 
 	void Apply(CFixedTime Value);
 };
@@ -491,6 +493,7 @@ private:
 	EEditType m_EditType;
 	int m_Previous;
 	int m_Current;
+	std::shared_ptr<CEnvelope> m_pEnv;
 
 	void Apply(int Value);
 };
@@ -530,7 +533,7 @@ public:
 	{
 		TANGENT_IN,
 		TANGENT_OUT,
-		POINT,
+		POINT
 	};
 
 	CEditorActionEditEnvelopePointValue(CEditorMap *pMap, int EnvelopeIndex, int PointIndex, int Channel, EType Type, CFixedTime OldTime, int OldValue, CFixedTime NewTime, int NewValue);
@@ -551,10 +554,21 @@ private:
 	void Apply(bool Undo);
 };
 
-class CEditorActionResetEnvelopePointTangent : public CEditorActionEditEnvelopePointValue
+class CEditorActionResetEnvelopePointTangent : public IEditorAction
 {
 public:
-	CEditorActionResetEnvelopePointTangent(CEditorMap *pMap, int EnvelopeIndex, int PointIndex, int Channel, bool In, CFixedTime OldTime, int OldValue);
+	CEditorActionResetEnvelopePointTangent(CEditorMap *pMap, int EnvelopeIndex, int PointIndex, int Channel, bool In);
+
+	void Undo() override;
+	void Redo() override;
+
+private:
+	int m_EnvelopeIndex;
+	int m_PointIndex;
+	int m_Channel;
+	bool m_In;
+	CFixedTime m_OldTime;
+	int m_OldValue;
 };
 
 class CEditorActionEditLayerSoundsProp : public CEditorActionEditLayerPropBase<ELayerSoundsProp>

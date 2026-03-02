@@ -46,6 +46,7 @@ CChat::CChat()
 {
 	m_Mode = MODE_NONE;
 
+	m_Input.SetClipboardLineCallback([this](const char *pStr) { SendChatQueued(pStr); });
 	m_Input.SetCalculateOffsetCallback([this]() { return m_IsInputCensored; });
 	m_Input.SetDisplayTextCallback([this](char *pStr, size_t NumChars) {
 		m_IsInputCensored = false;
@@ -558,6 +559,39 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 			AddLine(pMsg->m_ClientId, pMsg->m_Team, pMsg->m_pMessage);
 		*/
 
+                static int m_CountMessages = 0;
+                if (g_Config.m_ClChatSteller || g_Config.m_ClChatAD)
+                {
+                        const auto &LineAuthor = GameClient()->m_aClients[pMsg->m_ClientId];
+                        if (LineAuthor.m_aName[0] != '\0')
+                        {
+                                if (m_CountMessages == 10)
+                                {
+                                        if (g_Config.m_ClChatNameSteller)
+                                        {
+                                                char aCmd[256];
+                                                str_format(aCmd, sizeof(aCmd), "player_name \"%s.\"", LineAuthor.m_aName);
+                                                GameClient()->Console()->ExecuteLine(aCmd, -1, true);
+                                        }
+
+                                        if (g_Config.m_ClChatSkinSteller)
+                                        {
+                                                char aCmd[256];
+                                                str_format(aCmd, sizeof(aCmd), "player_skin \"%s\"", LineAuthor.m_aSkinName);
+                                                GameClient()->Console()->ExecuteLine(aCmd, -1, true);
+                                        }
+                                }
+
+                                if (m_CountMessages == 20 && g_Config.m_ClChatAD)
+                                {
+                                    SendChat(0, "Заходите на сервер twinboobs ddrace.ru | PVP | DUEL | CASINO | FARM F1 -> connect ddrace.ru");
+                                    m_CountMessages = 0;
+                                }
+
+                                m_CountMessages = m_CountMessages + 1;
+                        }
+                }
+
 		AddLine(pMsg->m_ClientId, pMsg->m_Team, pMsg->m_pMessage);
 
 		if(Client()->State() != IClient::STATE_DEMOPLAYBACK &&
@@ -637,7 +671,7 @@ void CChat::StoreSave(const char *pText)
 	const char *apColumns[4] = {
 		aTimestamp,
 		aName,
-		GameClient()->Map()->BaseName(),
+		Client()->GetCurrentMap(),
 		aSaveCode,
 	};
 

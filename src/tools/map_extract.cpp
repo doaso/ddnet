@@ -1,7 +1,6 @@
 // Adapted from TWMapImagesRecovery by Tardo: https://github.com/Tardo/TWMapImagesRecovery
 
 #include <base/logger.h>
-#include <base/os.h>
 #include <base/system.h>
 
 #include <engine/gfx/image_loader.h>

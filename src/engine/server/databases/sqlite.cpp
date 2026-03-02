@@ -1,9 +1,6 @@
 #include "connection.h"
 
-#include <base/dbg.h>
 #include <base/math.h>
-#include <base/mem.h>
-#include <base/str.h>
 
 #include <engine/console.h>
 
@@ -154,6 +151,9 @@ bool CSqliteConnection::ConnectImpl(char *pError, int ErrorSize)
 		if(!Execute("PRAGMA journal_mode=WAL", pError, ErrorSize))
 			return false;
 		char aBuf[1024];
+		FormatCreateUsers(aBuf, sizeof(aBuf), /* Backup */ false);
+		if(!Execute(aBuf, pError, ErrorSize))
+			return false;
 		FormatCreateRace(aBuf, sizeof(aBuf), /* Backup */ false);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
@@ -170,6 +170,9 @@ bool CSqliteConnection::ConnectImpl(char *pError, int ErrorSize)
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;
 
+		FormatCreateUsers(aBuf, sizeof(aBuf), /* Backup */ true);
+		if(!Execute(aBuf, pError, ErrorSize))
+			return false;
 		FormatCreateRace(aBuf, sizeof(aBuf), /* Backup */ true);
 		if(!Execute(aBuf, pError, ErrorSize))
 			return false;

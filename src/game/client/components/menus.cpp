@@ -13,7 +13,6 @@
 #include <engine/client/updater.h>
 #include <engine/config.h>
 #include <engine/editor.h>
-#include <engine/font_icons.h>
 #include <engine/friends.h>
 #include <engine/gfx/image_manipulation.h>
 #include <engine/graphics.h>
@@ -41,6 +40,7 @@
 #include <cmath>
 #include <vector>
 
+using namespace FontIcons;
 using namespace std::chrono_literals;
 
 ColorRGBA CMenus::ms_GuiColor;
@@ -269,7 +269,7 @@ int CMenus::DoButton_Favorite(const void *pButtonId, const void *pParentId, bool
 		TextRender()->TextColor(Checked ? ColorRGBA(1.0f, 0.85f, 0.3f, 0.8f + Alpha) : ColorRGBA(0.5f, 0.5f, 0.5f, 0.8f + Alpha));
 		SLabelProperties Props;
 		Props.m_MaxWidth = pRect->w;
-		Ui()->DoLabel(pRect, FontIcon::STAR, 12.0f, TEXTALIGN_MC, Props);
+		Ui()->DoLabel(pRect, FONT_ICON_STAR, 12.0f, TEXTALIGN_MC, Props);
 		TextRender()->TextColor(TextRender()->DefaultTextColor());
 		TextRender()->SetRenderFlags(0);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
@@ -291,7 +291,7 @@ int CMenus::DoButton_CheckBox_Common(const void *pId, const char *pText, const c
 	{
 		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT);
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
-		Ui()->DoLabel(&Box, FontIcon::XMARK, Box.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
+		Ui()->DoLabel(&Box, FONT_ICON_XMARK, Box.h * CUi::ms_FontmodHeight, TEXTALIGN_MC);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 	}
 	else
@@ -516,7 +516,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 	Box.VSplitRight(33.0f, &Box, &Button);
 	static CButtonContainer s_QuitButton;
 	ColorRGBA QuitColor(1, 0, 0, 0.5f);
-	if(DoButton_MenuTab(&s_QuitButton, FontIcon::POWER_OFF, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_QUIT], nullptr, nullptr, &QuitColor, 10.0f))
+	if(DoButton_MenuTab(&s_QuitButton, FONT_ICON_POWER_OFF, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_QUIT], nullptr, nullptr, &QuitColor, 10.0f))
 	{
 		if(GameClient()->Editor()->HasUnsavedData() || (GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmQuitTime && g_Config.m_ClConfirmQuitTime >= 0) || m_MenusIngameTouchControls.UnsavedChanges() || GameClient()->m_TouchControls.HasEditingChanges())
 		{
@@ -532,7 +532,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 	Box.VSplitRight(10.0f, &Box, nullptr);
 	Box.VSplitRight(33.0f, &Box, &Button);
 	static CButtonContainer s_SettingsButton;
-	if(DoButton_MenuTab(&s_SettingsButton, FontIcon::GEAR, ActivePage == PAGE_SETTINGS, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_SETTINGS]))
+	if(DoButton_MenuTab(&s_SettingsButton, FONT_ICON_GEAR, ActivePage == PAGE_SETTINGS, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_SETTINGS]))
 	{
 		NewPage = PAGE_SETTINGS;
 	}
@@ -541,7 +541,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 	Box.VSplitRight(10.0f, &Box, nullptr);
 	Box.VSplitRight(33.0f, &Box, &Button);
 	static CButtonContainer s_EditorButton;
-	if(DoButton_MenuTab(&s_EditorButton, FontIcon::PEN_TO_SQUARE, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_EDITOR]))
+	if(DoButton_MenuTab(&s_EditorButton, FONT_ICON_PEN_TO_SQUARE, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_EDITOR]))
 	{
 		g_Config.m_ClEditor = 1;
 	}
@@ -552,7 +552,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 		Box.VSplitRight(10.0f, &Box, nullptr);
 		Box.VSplitRight(33.0f, &Box, &Button);
 		static CButtonContainer s_DemoButton;
-		if(DoButton_MenuTab(&s_DemoButton, FontIcon::CLAPPERBOARD, ActivePage == PAGE_DEMOS, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_DEMOBUTTON]))
+		if(DoButton_MenuTab(&s_DemoButton, FONT_ICON_CLAPPERBOARD, ActivePage == PAGE_DEMOS, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_DEMOBUTTON]))
 		{
 			NewPage = PAGE_DEMOS;
 		}
@@ -579,10 +579,10 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 		ColorRGBA *pHomeButtonColor = nullptr;
 		ColorRGBA *pHomeButtonColorHover = nullptr;
 
-		const char *pHomeScreenButtonLabel = FontIcon::HOUSE;
+		const char *pHomeScreenButtonLabel = FONT_ICON_HOUSE;
 		if(GotNewsOrUpdate)
 		{
-			pHomeScreenButtonLabel = FontIcon::NEWSPAPER;
+			pHomeScreenButtonLabel = FONT_ICON_NEWSPAPER;
 			pHomeButtonColor = &HomeButtonColorAlert;
 			pHomeButtonColorHover = &HomeButtonColorAlertHover;
 		}
@@ -598,7 +598,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 		Box.VSplitLeft(10.0f, nullptr, &Box);
 		Box.VSplitLeft(BrowserButtonWidth, &Button, &Box);
 		static CButtonContainer s_InternetButton;
-		if(DoButton_MenuTab(&s_InternetButton, FontIcon::EARTH_AMERICAS, ActivePage == PAGE_INTERNET, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIG_TAB_INTERNET]))
+		if(DoButton_MenuTab(&s_InternetButton, FONT_ICON_EARTH_AMERICAS, ActivePage == PAGE_INTERNET, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIG_TAB_INTERNET]))
 		{
 			NewPage = PAGE_INTERNET;
 		}
@@ -606,7 +606,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 
 		Box.VSplitLeft(BrowserButtonWidth, &Button, &Box);
 		static CButtonContainer s_LanButton;
-		if(DoButton_MenuTab(&s_LanButton, FontIcon::NETWORK_WIRED, ActivePage == PAGE_LAN, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIG_TAB_LAN]))
+		if(DoButton_MenuTab(&s_LanButton, FONT_ICON_NETWORK_WIRED, ActivePage == PAGE_LAN, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIG_TAB_LAN]))
 		{
 			NewPage = PAGE_LAN;
 		}
@@ -614,7 +614,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 
 		Box.VSplitLeft(BrowserButtonWidth, &Button, &Box);
 		static CButtonContainer s_FavoritesButton;
-		if(DoButton_MenuTab(&s_FavoritesButton, FontIcon::STAR, ActivePage == PAGE_FAVORITES, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIG_TAB_FAVORITES]))
+		if(DoButton_MenuTab(&s_FavoritesButton, FONT_ICON_STAR, ActivePage == PAGE_FAVORITES, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIG_TAB_FAVORITES]))
 		{
 			NewPage = PAGE_FAVORITES;
 		}
@@ -652,7 +652,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 				break;
 			Box.VSplitLeft(BrowserButtonWidth, &Button, &Box);
 			const int Page = PAGE_FAVORITE_COMMUNITY_1 + FavoriteCommunityIndex;
-			if(DoButton_MenuTab(&s_aFavoriteCommunityButtons[FavoriteCommunityIndex], FontIcon::ELLIPSIS, ActivePage == Page, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIT_TAB_FAVORITE_COMMUNITY_1 + FavoriteCommunityIndex], nullptr, nullptr, nullptr, 10.0f, m_CommunityIcons.Find(pCommunity->Id())))
+			if(DoButton_MenuTab(&s_aFavoriteCommunityButtons[FavoriteCommunityIndex], FONT_ICON_ELLIPSIS, ActivePage == Page, &Button, IGraphics::CORNER_T, &m_aAnimatorsBigPage[BIT_TAB_FAVORITE_COMMUNITY_1 + FavoriteCommunityIndex], nullptr, nullptr, nullptr, 10.0f, m_CommunityIcons.Find(pCommunity->Id())))
 			{
 				NewPage = Page;
 			}
@@ -717,7 +717,7 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 			Box.VSplitRight(10.0f, &Box, nullptr);
 			Box.VSplitRight(33.0f, &Box, &Button);
 			static CButtonContainer s_DemoButton;
-			if(DoButton_MenuTab(&s_DemoButton, FontIcon::CLAPPERBOARD, ActivePage == PAGE_DEMOS, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_DEMOBUTTON]))
+			if(DoButton_MenuTab(&s_DemoButton, FONT_ICON_CLAPPERBOARD, ActivePage == PAGE_DEMOS, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_DEMOBUTTON]))
 			{
 				NewPage = PAGE_DEMOS;
 			}
@@ -1007,7 +1007,7 @@ bool CMenus::CanDisplayWarning() const
 void CMenus::Render()
 {
 	Ui()->MapScreen();
-	Ui()->SetMouseSlow(false);
+	Ui()->ResetMouseSlow();
 
 	static int s_Frame = 0;
 	if(s_Frame == 0)
@@ -1025,32 +1025,33 @@ void CMenus::Render()
 		m_CommunityIcons.Update();
 	}
 
-	// Initially add DDNet as favorite community and select its tab.
-	// This must be delayed until the DDNet info is available.
-	if(m_CreateDefaultFavoriteCommunities &&
-		ServerBrowser()->DDNetInfoAvailable())
+	if(ServerBrowser()->DDNetInfoAvailable())
 	{
-		m_CreateDefaultFavoriteCommunities = false;
-		if(ServerBrowser()->Community(IServerBrowser::COMMUNITY_DDNET) != nullptr)
+		// Initially add DDNet as favorite community and select its tab.
+		// This must be delayed until the DDNet info is available.
+		if(m_CreateDefaultFavoriteCommunities)
 		{
-			ServerBrowser()->FavoriteCommunitiesFilter().Clear();
-			ServerBrowser()->FavoriteCommunitiesFilter().Add(IServerBrowser::COMMUNITY_DDNET);
-			SetMenuPage(PAGE_FAVORITE_COMMUNITY_1);
-			ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITE_COMMUNITY_1);
+			m_CreateDefaultFavoriteCommunities = false;
+			if(ServerBrowser()->Community(IServerBrowser::COMMUNITY_DDNET) != nullptr)
+			{
+				ServerBrowser()->FavoriteCommunitiesFilter().Clear();
+				ServerBrowser()->FavoriteCommunitiesFilter().Add(IServerBrowser::COMMUNITY_DDNET);
+				SetMenuPage(PAGE_FAVORITE_COMMUNITY_1);
+				ServerBrowser()->Refresh(IServerBrowser::TYPE_FAVORITE_COMMUNITY_1);
+			}
 		}
-	}
-	if(m_JoinTutorial.m_Queued && m_Popup == POPUP_NONE)
-	{
-		const char *pAddr = ServerBrowser()->GetTutorialServer();
-		if(pAddr)
+
+		if(m_JoinTutorial && m_Popup == POPUP_NONE && !ServerBrowser()->IsGettingServerlist())
 		{
-			Client()->Connect(pAddr);
+			m_JoinTutorial = false;
+			// This is only reached on first launch, when the DDNet community tab has been created and
+			// activated by default, so the server info for the tutorial server should be available.
+			const char *pAddr = ServerBrowser()->GetTutorialServer();
+			if(pAddr)
+			{
+				Client()->Connect(pAddr);
+			}
 		}
-		else
-		{
-			m_Popup = POPUP_JOIN_TUTORIAL;
-		}
-		m_JoinTutorial.m_Queued = false;
 	}
 
 	// Determine the client state once before rendering because it can change
@@ -1283,10 +1284,6 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		pButtonText = Localize("Ok");
 		TopAlign = true;
 	}
-	else if(m_Popup == POPUP_JOIN_TUTORIAL)
-	{
-		pTitle = Localize("Joining Tutorial server");
-	}
 	else if(m_Popup == POPUP_POINTS)
 	{
 		pTitle = Localize("Existing Player");
@@ -1318,46 +1315,35 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 	CUIRect Box, Part;
 	Box = Screen;
 	if(m_Popup != POPUP_FIRST_LAUNCH)
-	{
 		Box.Margin(150.0f, &Box);
-	}
 
-	// Background
+	// render the box
 	Box.Draw(BgColor, IGraphics::CORNER_ALL, 15.0f);
 
-	// Title
-	{
-		CUIRect Title;
-		Box.HSplitTop(20.0f, nullptr, &Box);
-		Box.HSplitTop(24.0f, &Title, &Box);
-		Box.HSplitTop(20.0f, nullptr, &Box);
-		Title.VMargin(20.0f, &Title);
+	Box.HSplitTop(20.f, &Part, &Box);
+	Box.HSplitTop(24.f, &Part, &Box);
+	Part.VMargin(20.f, &Part);
+	SLabelProperties Props;
+	Props.m_MaxWidth = (int)Part.w;
 
-		const float TitleFontSize = 24.0f;
-		if(TextRender()->TextWidth(TitleFontSize, pTitle) > Title.w)
-			Ui()->DoLabel(&Title, pTitle, TitleFontSize, TEXTALIGN_ML, {.m_MaxWidth = Title.w});
-		else
-			Ui()->DoLabel(&Title, pTitle, TitleFontSize, TEXTALIGN_MC);
-	}
+	if(TextRender()->TextWidth(24.f, pTitle, -1, -1.0f) > Part.w)
+		Ui()->DoLabel(&Part, pTitle, 24.f, TEXTALIGN_ML, Props);
+	else
+		Ui()->DoLabel(&Part, pTitle, 24.f, TEXTALIGN_MC);
 
-	// Extra text (optional)
-	if(m_Popup != POPUP_JOIN_TUTORIAL)
-	{
-		CUIRect ExtraText;
-		Box.HSplitTop(24.0f, &ExtraText, &Box);
-		ExtraText.VMargin(20.0f, &ExtraText);
-		if(pExtraText[0] != '\0')
-		{
-			const float ExtraTextFontSize = m_Popup == POPUP_FIRST_LAUNCH ? 16.0f : 20.0f;
+	Box.HSplitTop(20.f, &Part, &Box);
+	Box.HSplitTop(24.f, &Part, &Box);
+	Part.VMargin(20.f, &Part);
 
-			if(TopAlign)
-				Ui()->DoLabel(&ExtraText, pExtraText, ExtraTextFontSize, TEXTALIGN_TL, {.m_MaxWidth = ExtraText.w});
-			else if(TextRender()->TextWidth(ExtraTextFontSize, pExtraText) > ExtraText.w)
-				Ui()->DoLabel(&ExtraText, pExtraText, ExtraTextFontSize, TEXTALIGN_ML, {.m_MaxWidth = ExtraText.w});
-			else
-				Ui()->DoLabel(&ExtraText, pExtraText, ExtraTextFontSize, TEXTALIGN_MC);
-		}
-	}
+	float FontSize = m_Popup == POPUP_FIRST_LAUNCH ? 16.0f : 20.f;
+
+	Props.m_MaxWidth = (int)Part.w;
+	if(TopAlign)
+		Ui()->DoLabel(&Part, pExtraText, FontSize, TEXTALIGN_TL, Props);
+	else if(TextRender()->TextWidth(FontSize, pExtraText, -1, -1.0f) > Part.w)
+		Ui()->DoLabel(&Part, pExtraText, FontSize, TEXTALIGN_ML, Props);
+	else
+		Ui()->DoLabel(&Part, pExtraText, FontSize, TEXTALIGN_MC);
 
 	if(m_Popup == POPUP_MESSAGE || m_Popup == POPUP_CONFIRM)
 	{
@@ -1406,12 +1392,14 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		if(GameClient()->Editor()->HasUnsavedData())
 		{
 			str_format(aBuf, sizeof(aBuf), "%s\n\n%s", Localize("There's an unsaved map in the editor, you might want to save it."), Localize("Continue anyway?"));
-			Ui()->DoLabel(&Box, aBuf, 20.0f, TEXTALIGN_ML, {.m_MaxWidth = Part.w - 20.0f});
+			Props.m_MaxWidth = Part.w - 20.0f;
+			Ui()->DoLabel(&Box, aBuf, 20.f, TEXTALIGN_ML, Props);
 		}
 		else if(GameClient()->m_TouchControls.HasEditingChanges() || m_MenusIngameTouchControls.UnsavedChanges())
 		{
 			str_format(aBuf, sizeof(aBuf), "%s\n\n%s", Localize("There's an unsaved change in the touch controls editor, you might want to save it."), Localize("Continue anyway?"));
-			Ui()->DoLabel(&Box, aBuf, 20.0f, TEXTALIGN_ML, {.m_MaxWidth = Part.w - 20.0f});
+			Props.m_MaxWidth = Part.w - 20.0f;
+			Ui()->DoLabel(&Box, aBuf, 20.f, TEXTALIGN_ML, Props);
 		}
 
 		// buttons
@@ -1667,7 +1655,7 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		Row.VSplitLeft(20.0f, &SlowDownButton, &Row);
 		Row.VSplitLeft(5.0f, nullptr, &Row);
 		static CButtonContainer s_SlowDownButton;
-		if(Ui()->DoButton_FontIcon(&s_SlowDownButton, FontIcon::BACKWARD, 0, &SlowDownButton, BUTTONFLAG_LEFT))
+		if(Ui()->DoButton_FontIcon(&s_SlowDownButton, FONT_ICON_BACKWARD, 0, &SlowDownButton, BUTTONFLAG_LEFT))
 			m_Speed = std::clamp(m_Speed - 1, 0, (int)(std::size(DEMO_SPEEDS) - 1));
 
 		// paused
@@ -1675,7 +1663,7 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		Row.VSplitLeft(20.0f, &PausedButton, &Row);
 		Row.VSplitLeft(5.0f, nullptr, &Row);
 		static CButtonContainer s_PausedButton;
-		if(Ui()->DoButton_FontIcon(&s_PausedButton, FontIcon::PAUSE, 0, &PausedButton, BUTTONFLAG_LEFT))
+		if(Ui()->DoButton_FontIcon(&s_PausedButton, FONT_ICON_PAUSE, 0, &PausedButton, BUTTONFLAG_LEFT))
 			m_StartPaused ^= 1;
 
 		// fastforward
@@ -1683,7 +1671,7 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		Row.VSplitLeft(20.0f, &FastForwardButton, &Row);
 		Row.VSplitLeft(8.0f, nullptr, &Row);
 		static CButtonContainer s_FastForwardButton;
-		if(Ui()->DoButton_FontIcon(&s_FastForwardButton, FontIcon::FORWARD, 0, &FastForwardButton, BUTTONFLAG_LEFT))
+		if(Ui()->DoButton_FontIcon(&s_FastForwardButton, FONT_ICON_FORWARD, 0, &FastForwardButton, BUTTONFLAG_LEFT))
 			m_Speed = std::clamp(m_Speed + 1, 0, (int)(std::size(DEMO_SPEEDS) - 1));
 
 		// speed meter
@@ -1765,14 +1753,15 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		static CButtonContainer s_JoinTutorialButton;
 		if(DoButton_Menu(&s_JoinTutorialButton, Localize("Join Tutorial Server"), 0, &Join) || Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
 		{
+			m_JoinTutorial = true;
 			Client()->RequestDDNetInfo();
 			m_Popup = g_Config.m_BrIndicateFinished ? POPUP_POINTS : POPUP_NONE;
-			JoinTutorial();
 		}
 
 		static CButtonContainer s_SkipTutorialButton;
 		if(DoButton_Menu(&s_SkipTutorialButton, Localize("Skip Tutorial"), 0, &Skip) || Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE))
 		{
+			m_JoinTutorial = false;
 			Client()->RequestDDNetInfo();
 			m_Popup = g_Config.m_BrIndicateFinished ? POPUP_POINTS : POPUP_NONE;
 		}
@@ -1799,193 +1788,6 @@ void CMenus::RenderPopupFullscreen(CUIRect Screen)
 		static CLineInput s_PlayerNameInput(g_Config.m_PlayerName, sizeof(g_Config.m_PlayerName));
 		s_PlayerNameInput.SetEmptyText(Client()->PlayerName());
 		Ui()->DoEditBox(&s_PlayerNameInput, &TextBox, 12.0f);
-	}
-	else if(m_Popup == POPUP_JOIN_TUTORIAL)
-	{
-		CUIRect ButtonBar, StatusLabel, ProgressLabel, ProgressIndicator;
-		Box.HSplitBottom(20.0f, &Box, nullptr);
-		Box.HSplitBottom(24.0f, &Box, &ButtonBar);
-		ButtonBar.VMargin(120.0f, &ButtonBar);
-		Box.HSplitBottom(20.0f, &StatusLabel, nullptr);
-		StatusLabel.VMargin(20.0f, &StatusLabel);
-		StatusLabel.HSplitMid(&StatusLabel, &ProgressLabel);
-		ProgressLabel.VSplitLeft(50.0f, &ProgressIndicator, &ProgressLabel);
-
-		if(m_JoinTutorial.m_Status == CJoinTutorial::EStatus::REFRESHING)
-		{
-			if(ServerBrowser()->IsGettingServerlist() ||
-				Client()->InfoState() == IClient::EInfoState::LOADING)
-			{
-				// Still refreshing
-			}
-			else if(ServerBrowser()->IsServerlistError() ||
-				Client()->InfoState() == IClient::EInfoState::ERROR)
-			{
-				m_JoinTutorial.m_Status = CJoinTutorial::EStatus::SERVER_LIST_ERROR;
-			}
-			else
-			{
-				const char *pAddr = ServerBrowser()->GetTutorialServer();
-				if(pAddr)
-				{
-					Client()->Connect(pAddr);
-				}
-				else
-				{
-					m_JoinTutorial.m_Status = CJoinTutorial::EStatus::NO_TUTORIAL_AVAILABLE;
-				}
-			}
-		}
-
-		const char *pStatusLabel = nullptr;
-		switch(m_JoinTutorial.m_Status)
-		{
-		case CJoinTutorial::EStatus::REFRESHING:
-			pStatusLabel = Localize("Getting server list from master server");
-			break;
-		case CJoinTutorial::EStatus::SERVER_LIST_ERROR:
-			pStatusLabel = Localize("Could not get server list from master server");
-			break;
-		case CJoinTutorial::EStatus::NO_TUTORIAL_AVAILABLE:
-			pStatusLabel = Localize("There are no Tutorial servers available");
-			break;
-		}
-		if(pStatusLabel != nullptr)
-		{
-			Ui()->DoLabel(&StatusLabel, pStatusLabel, 20.0f, TEXTALIGN_ML);
-		}
-
-		const char *pProgressLabel = nullptr;
-		bool ProgressDeterminate = true;
-		const float LastStateChangeSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(time_get_nanoseconds() - m_JoinTutorial.m_StateChange).count();
-		constexpr float RefreshDelay = 5.0f;
-
-		if(m_JoinTutorial.m_Status == CJoinTutorial::EStatus::REFRESHING)
-		{
-			pProgressLabel = Localize("Please wait…");
-			ProgressDeterminate = false;
-		}
-		else if(!m_JoinTutorial.m_TryRefresh)
-		{
-			if(!m_JoinTutorial.m_TriedRefresh)
-			{
-				m_JoinTutorial.m_TryRefresh = true;
-				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
-			}
-			else if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::NOT_TRIED)
-			{
-				m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::TRY;
-				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
-			}
-		}
-
-		if(m_JoinTutorial.m_TryRefresh)
-		{
-			if(LastStateChangeSeconds >= RefreshDelay)
-			{
-				// Activate internet tab before joining tutorial to make sure the server info
-				// for the tutorial servers is available.
-				GameClient()->m_Menus.SetMenuPage(CMenus::PAGE_INTERNET);
-				GameClient()->m_Menus.RefreshBrowserTab(true);
-				m_JoinTutorial.m_Status = CJoinTutorial::EStatus::REFRESHING;
-				m_JoinTutorial.m_TryRefresh = false;
-				m_JoinTutorial.m_TriedRefresh = true;
-				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
-			}
-			else
-			{
-				pProgressLabel = Localize("Retrying…");
-			}
-		}
-
-		const auto &&ShowFinalErrorMessage = [&]() {
-			PopupMessage(Localize("Error joining Tutorial server"), Localize("Could not find a Tutorial server. Check your internet connection."), Localize("Ok"));
-		};
-		const auto &&RunServer = [&]() {
-			char aMotd[256];
-			str_copy(aMotd, "sv_motd \"");
-			char *pDst = aMotd + str_length(aMotd);
-			str_escape(&pDst, Localize("You're playing on a local server because no online Tutorial server could be found.\n\nYour record will only be saved locally."), aMotd + sizeof(aMotd) - 1);
-			str_append(aMotd, "\"");
-			if(GameClient()->m_LocalServer.RunServer({"sv_register 0", "sv_map Tutorial", aMotd}))
-			{
-				m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::WAITING_START;
-				m_JoinTutorial.m_StateChange = time_get_nanoseconds();
-			}
-			else
-			{
-				ShowFinalErrorMessage();
-			}
-		};
-		if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::TRY)
-		{
-			if(LastStateChangeSeconds >= RefreshDelay)
-			{
-				if(GameClient()->m_LocalServer.IsServerRunning())
-				{
-					GameClient()->m_LocalServer.KillServer();
-					m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::WAITING_STOP;
-					m_JoinTutorial.m_StateChange = time_get_nanoseconds();
-				}
-				else
-				{
-					RunServer();
-				}
-			}
-			else
-			{
-				pProgressLabel = Localize("Could not find online Tutorial server.\nStarting and connecting to local server…");
-			}
-		}
-		else if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::WAITING_STOP)
-		{
-			if(LastStateChangeSeconds >= 5.0f)
-			{
-				ShowFinalErrorMessage();
-			}
-			else
-			{
-				if(!GameClient()->m_LocalServer.IsServerRunning())
-				{
-					RunServer();
-				}
-
-				pProgressLabel = Localize("Waiting for local server to stop…");
-				ProgressDeterminate = false;
-			}
-		}
-		else if(m_JoinTutorial.m_LocalServerState == CJoinTutorial::ELocalServerState::WAITING_START)
-		{
-			if(LastStateChangeSeconds >= 5.0f)
-			{
-				ShowFinalErrorMessage();
-			}
-			else
-			{
-				if(LastStateChangeSeconds >= 2.0f &&
-					GameClient()->m_LocalServer.IsServerRunning())
-				{
-					Client()->Connect("localhost");
-				}
-
-				pProgressLabel = Localize("Waiting for local server to start…");
-				ProgressDeterminate = false;
-			}
-		}
-
-		if(pProgressLabel != nullptr)
-		{
-			Ui()->RenderProgressSpinner(ProgressIndicator.Center(), 12.0f, {.m_Progress = ProgressDeterminate ? (LastStateChangeSeconds / RefreshDelay) : -1.0f});
-			Ui()->DoLabel(&ProgressLabel, pProgressLabel, 20.0f, TEXTALIGN_ML);
-		}
-
-		static CButtonContainer s_Button;
-		if(DoButton_Menu(&s_Button, Localize("Cancel"), 0, &ButtonBar) ||
-			Ui()->ConsumeHotkey(CUi::HOTKEY_ESCAPE) ||
-			Ui()->ConsumeHotkey(CUi::HOTKEY_ENTER))
-		{
-			m_Popup = POPUP_NONE;
-		}
 	}
 	else if(m_Popup == POPUP_POINTS)
 	{
@@ -2765,14 +2567,4 @@ void CMenus::SetShowStart(bool ShowStart)
 void CMenus::ShowQuitPopup()
 {
 	m_Popup = POPUP_QUIT;
-}
-
-void CMenus::JoinTutorial()
-{
-	m_JoinTutorial.m_Queued = true;
-	m_JoinTutorial.m_Status = CJoinTutorial::EStatus::REFRESHING;
-	m_JoinTutorial.m_TryRefresh = false;
-	m_JoinTutorial.m_TriedRefresh = false;
-	m_JoinTutorial.m_LocalServerState = CJoinTutorial::ELocalServerState::NOT_TRIED;
-	m_JoinTutorial.m_StateChange = time_get_nanoseconds();
 }

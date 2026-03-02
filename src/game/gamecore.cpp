@@ -172,6 +172,7 @@ void CCharacterCore::Reset()
 	m_HookHitDisabled = false;
 	m_Super = false;
 	m_Invincible = false;
+        m_IsBlockMode = false;
 	m_HasTelegunGun = false;
 	m_HasTelegunGrenade = false;
 	m_HasTelegunLaser = false;
@@ -717,6 +718,7 @@ void CCharacterCore::SetHookedPlayer(int HookedPlayer)
 				pCharCore->m_AttachedPlayers.insert(m_Id);
 			}
 		}
+
 		m_HookedPlayer = HookedPlayer;
 	}
 }

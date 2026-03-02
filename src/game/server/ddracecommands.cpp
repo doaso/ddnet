@@ -1,14 +1,11 @@
 /* (c) Shereef Marzouk. See "licence DDRace.txt" and the readme.txt in the root of the distribution for more information. */
 #include "gamecontext.h"
 
-#include <base/log.h>
-
 #include <engine/antibot.h>
 #include <engine/shared/config.h>
 
-#include <game/mapitems.h>
 #include <game/server/entities/character.h>
-#include <game/server/gamemodes/ddnet.h>
+#include <game/server/gamemodes/DDRace.h>
 #include <game/server/player.h>
 #include <game/server/save.h>
 #include <game/server/teams.h>
@@ -83,89 +80,6 @@ void CGameContext::MoveCharacter(int ClientId, int X, int Y, bool Raw)
 	pChr->m_DDRaceState = ERaceState::CHEATED;
 }
 
-void CGameContext::ConKillPlayer(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	int Victim = pResult->GetVictim();
-
-	if(pSelf->m_apPlayers[Victim])
-	{
-		pSelf->m_apPlayers[Victim]->KillCharacter(WEAPON_GAME);
-		char aBuf[512];
-		if(pResult->NumArguments() == 2)
-			str_format(aBuf, sizeof(aBuf), "%s was killed by authorized player (%s)",
-				pSelf->Server()->ClientName(Victim),
-				pResult->GetString(1));
-		else
-			str_format(aBuf, sizeof(aBuf), "%s was killed by authorized player",
-				pSelf->Server()->ClientName(Victim));
-		pSelf->SendChat(-1, TEAM_ALL, aBuf);
-	}
-}
-
-void CGameContext::ConNinja(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_NINJA, false);
-}
-
-void CGameContext::ConUnNinja(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_NINJA, true);
-}
-
-void CGameContext::ConEndlessHook(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-	{
-		pChr->SetEndlessHook(true);
-	}
-}
-
-void CGameContext::ConUnEndlessHook(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-	{
-		pChr->SetEndlessHook(false);
-	}
-}
-
-void CGameContext::ConSuper(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr && !pChr->IsSuper())
-	{
-		pChr->SetSuper(true);
-		pChr->Unfreeze();
-	}
-}
-
-void CGameContext::ConUnSuper(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr && pChr->IsSuper())
-	{
-		pChr->SetSuper(false);
-	}
-}
-
 void CGameContext::ConToggleInvincible(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
@@ -176,242 +90,12 @@ void CGameContext::ConToggleInvincible(IConsole::IResult *pResult, void *pUserDa
 		pChr->SetInvincible(pResult->NumArguments() == 0 ? !pChr->Core()->m_Invincible : pResult->GetInteger(0));
 }
 
-void CGameContext::ConSolo(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetSolo(true);
-}
-
-void CGameContext::ConUnSolo(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetSolo(false);
-}
-
-void CGameContext::ConFreeze(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->Freeze();
-}
-
-void CGameContext::ConUnfreeze(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->Unfreeze();
-}
-
-void CGameContext::ConDeep(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetDeepFrozen(true);
-}
-
-void CGameContext::ConUnDeep(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-	{
-		pChr->SetDeepFrozen(false);
-		pChr->Unfreeze();
-	}
-}
-
-void CGameContext::ConLiveFreeze(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetLiveFrozen(true);
-}
-
-void CGameContext::ConUnLiveFreeze(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetLiveFrozen(false);
-}
-
-void CGameContext::ConShotgun(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_SHOTGUN, false);
-}
-
-void CGameContext::ConGrenade(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_GRENADE, false);
-}
-
-void CGameContext::ConLaser(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_LASER, false);
-}
-
-void CGameContext::ConJetpack(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetJetpack(true);
-}
-
-void CGameContext::ConEndlessJump(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetEndlessJump(true);
-}
-
 void CGameContext::ConSetJumps(IConsole::IResult *pResult, void *pUserData)
 {
 	CGameContext *pSelf = (CGameContext *)pUserData;
 	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
 	if(pChr)
 		pChr->SetJumps(pResult->GetInteger(0));
-}
-
-void CGameContext::ConWeapons(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, -1, false);
-}
-
-void CGameContext::ConUnShotgun(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_SHOTGUN, true);
-}
-
-void CGameContext::ConUnGrenade(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_GRENADE, true);
-}
-
-void CGameContext::ConUnLaser(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, WEAPON_LASER, true);
-}
-
-void CGameContext::ConUnJetpack(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetJetpack(false);
-}
-
-void CGameContext::ConUnEndlessJump(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(pChr)
-		pChr->SetEndlessJump(false);
-}
-
-void CGameContext::ConSetSwitch(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = pSelf->GetPlayerChar(pResult->m_ClientId);
-	if(!pChr)
-	{
-		log_info("chatresp", "You can't set switch while you are dead/a spectator.");
-		return;
-	}
-	const int Team = pChr->Team();
-	const int Switch = pResult->GetInteger(0);
-	if(!in_range(Switch, (int)pSelf->Switchers().size() - 1))
-	{
-		log_info("chatresp", "Invalid switch ID");
-		return;
-	}
-	const bool State = pResult->NumArguments() == 1 ? !pSelf->Switchers()[Switch].m_aStatus[Team] : pResult->GetInteger(1) != 0;
-	const int EndTick = pResult->NumArguments() == 3 ? pSelf->Server()->Tick() + 1 + pResult->GetInteger(2) * pSelf->Server()->TickSpeed() : 0;
-	pSelf->Switchers()[Switch].m_aStatus[Team] = State;
-	pSelf->Switchers()[Switch].m_aEndTick[Team] = EndTick;
-	if(State)
-		pSelf->Switchers()[Switch].m_aType[Team] = EndTick ? TILE_SWITCHTIMEDOPEN : TILE_SWITCHOPEN;
-	else
-		pSelf->Switchers()[Switch].m_aType[Team] = EndTick ? TILE_SWITCHTIMEDCLOSE : TILE_SWITCHCLOSE;
-}
-
-void CGameContext::ConUnWeapons(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, -1, true);
-}
-
-void CGameContext::ConAddWeapon(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, pResult->GetInteger(0), false);
-}
-
-void CGameContext::ConRemoveWeapon(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	pSelf->ModifyWeapons(pResult, pUserData, pResult->GetInteger(0), true);
-}
-
-void CGameContext::ModifyWeapons(IConsole::IResult *pResult, void *pUserData,
-	int Weapon, bool Remove)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	CCharacter *pChr = GetPlayerChar(pResult->m_ClientId);
-	if(!pChr)
-		return;
-
-	if(std::clamp(Weapon, -1, NUM_WEAPONS - 1) != Weapon)
-	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "info",
-			"invalid weapon id");
-		return;
-	}
-
-	if(Weapon == -1)
-	{
-		pChr->GiveWeapon(WEAPON_SHOTGUN, Remove);
-		pChr->GiveWeapon(WEAPON_GRENADE, Remove);
-		pChr->GiveWeapon(WEAPON_LASER, Remove);
-	}
-	else
-	{
-		pChr->GiveWeapon(Weapon, Remove);
-	}
-
-	pChr->m_DDRaceState = ERaceState::CHEATED;
 }
 
 void CGameContext::Teleport(CCharacter *pChr, vec2 Pos)
@@ -484,23 +168,9 @@ void CGameContext::ConTeleport(IConsole::IResult *pResult, void *pUserData)
 		}
 		pSelf->Teleport(pChr, Pos);
 		pChr->ResetJumps();
-		pChr->Unfreeze();
+		pChr->UnFreeze();
 		pChr->SetVelocity(vec2(0, 0));
 	}
-}
-
-void CGameContext::ConKill(IConsole::IResult *pResult, void *pUserData)
-{
-	CGameContext *pSelf = (CGameContext *)pUserData;
-	if(!CheckClientId(pResult->m_ClientId))
-		return;
-	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
-
-	if(!pPlayer || (pPlayer->m_LastKill && pPlayer->m_LastKill + pSelf->Server()->TickSpeed() * g_Config.m_SvKillDelay > pSelf->Server()->Tick()))
-		return;
-
-	pPlayer->m_LastKill = pSelf->Server()->Tick();
-	pPlayer->KillCharacter(WEAPON_SELF);
 }
 
 void CGameContext::ConForcePause(IConsole::IResult *pResult, void *pUserData)
@@ -601,7 +271,7 @@ void CGameContext::ConDrySave(IConsole::IResult *pResult, void *pUserData)
 	char aTimestamp[32];
 	str_timestamp(aTimestamp, sizeof(aTimestamp));
 	char aBuf[64];
-	str_format(aBuf, sizeof(aBuf), "%s_%s_%s.save", pSelf->Map()->BaseName(), aTimestamp, pSelf->Server()->GetAuthName(pResult->m_ClientId));
+	str_format(aBuf, sizeof(aBuf), "%s_%s_%s.save", pSelf->Server()->GetMapName(), aTimestamp, pSelf->Server()->GetAuthName(pResult->m_ClientId));
 	IOHANDLE File = pSelf->Storage()->OpenFile(aBuf, IOFLAG_WRITE, IStorage::TYPE_SAVE);
 	if(!File)
 		return;

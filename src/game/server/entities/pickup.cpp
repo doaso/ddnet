@@ -11,10 +11,10 @@
 #include <game/server/player.h>
 #include <game/teamscore.h>
 
-static constexpr int PICKUP_PHYSICS_RADIUS = 14;
+static constexpr int gs_PickupPhysSize = 14;
 
 CPickup::CPickup(CGameWorld *pGameWorld, int Type, int SubType, int Layer, int Number, int Flags) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), PICKUP_PHYSICS_RADIUS)
+	CEntity(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), gs_PickupPhysSize)
 {
 	m_Core = vec2(0.0f, 0.0f);
 	m_Type = Type;
@@ -23,6 +23,7 @@ CPickup::CPickup(CGameWorld *pGameWorld, int Type, int SubType, int Layer, int N
 	m_Layer = Layer;
 	m_Number = Number;
 	m_Flags = Flags;
+        m_SpawnTime = Server()->Tick();
 
 	GameWorld()->InsertEntity(this);
 }
@@ -131,6 +132,8 @@ void CPickup::Tick()
 				break;
 
 			case POWERUP_WEAPON:
+                                if(Server()->Tick() - m_SpawnTime < 25.0f)
+                                        break;
 
 				if(m_Subtype >= 0 && m_Subtype < NUM_WEAPONS && (!pChr->GetWeaponGot(m_Subtype) || pChr->GetWeaponAmmo(m_Subtype) != -1))
 				{
@@ -145,6 +148,8 @@ void CPickup::Tick()
 
 					if(pChr->GetPlayer())
 						GameServer()->SendWeaponPickup(pChr->GetPlayer()->GetCid(), m_Subtype);
+
+                                        m_MarkedForDestroy = true;
 				}
 				break;
 

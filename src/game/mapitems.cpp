@@ -31,6 +31,18 @@ bool IsValidGameTile(int Index)
 		(Index >= TILE_TELE_LASER_ENABLE && Index <= TILE_TELE_LASER_DISABLE) ||
 		(Index >= TILE_NPC_ENABLE && Index <= TILE_NPH_ENABLE) ||
 		(Index >= TILE_ENTITIES_OFF_1 && Index <= TILE_ENTITIES_OFF_2) ||
+		Index == TILE_BLOCK_ENABLE ||
+		Index == TILE_BLOCK_DISABLE ||
+		Index == TILE_GREEN_ZONE_ENABLE ||
+		Index == TILE_GREEN_ZONE_DISABLE ||
+		Index == TILE_LVL5_ZONE ||
+		Index == TILE_LVL10_ZONE ||
+		Index == TILE_LVL25_ZONE ||
+		Index == TILE_LVL50_ZONE ||
+		Index == TILE_LVL100_ZONE ||
+		Index == TILE_FARM_ZONE_X1 ||
+		Index == TILE_FARM_ZONE_X2 ||
+		Index == TILE_FARM_ZONE_X3 ||
 		IsValidEntity(Index));
 }
 
@@ -53,6 +65,14 @@ bool IsValidFrontTile(int Index)
 		(Index >= TILE_TELE_LASER_ENABLE && Index <= TILE_TELE_LASER_DISABLE) ||
 		(Index >= TILE_NPC_ENABLE && Index <= TILE_NPH_ENABLE) ||
 		(Index >= TILE_ENTITIES_OFF_1 && Index <= TILE_ENTITIES_OFF_2) ||
+		Index == TILE_LVL5_ZONE ||
+		Index == TILE_LVL10_ZONE ||
+		Index == TILE_LVL25_ZONE ||
+		Index == TILE_LVL50_ZONE ||
+		Index == TILE_LVL100_ZONE ||
+		Index == TILE_FARM_ZONE_X1 ||
+		Index == TILE_FARM_ZONE_X2 ||
+		Index == TILE_FARM_ZONE_X3 ||
 		IsValidEntity(Index));
 }
 

@@ -55,21 +55,21 @@ private:
 
 enum class EEnvelopeEditorOp
 {
-	NONE = 0,
-	SELECT,
-	DRAG_POINT,
-	DRAG_POINT_X,
-	DRAG_POINT_Y,
-	CONTEXT_MENU,
-	BOX_SELECT,
-	SCALE,
+	OP_NONE = 0,
+	OP_SELECT,
+	OP_DRAG_POINT,
+	OP_DRAG_POINT_X,
+	OP_DRAG_POINT_Y,
+	OP_CONTEXT_MENU,
+	OP_BOX_SELECT,
+	OP_SCALE
 };
 
 enum class ESoundSourceOp
 {
-	NONE = 0,
-	MOVE,
-	CONTEXT_MENU,
+	OP_NONE = 0,
+	OP_MOVE,
+	OP_CONTEXT_MENU,
 };
 
 class CEnvelopeEditorOperationTracker : public CMapObject
@@ -80,20 +80,19 @@ public:
 
 	void Begin(EEnvelopeEditorOp Operation);
 	void Stop(bool Switch = true);
-	void Reset() { m_TrackedOp = EEnvelopeEditorOp::NONE; }
+	void Reset() { m_TrackedOp = EEnvelopeEditorOp::OP_NONE; }
 
 private:
-	EEnvelopeEditorOp m_TrackedOp = EEnvelopeEditorOp::NONE;
+	EEnvelopeEditorOp m_TrackedOp = EEnvelopeEditorOp::OP_NONE;
 
-	class CPointData
+	struct SPointData
 	{
-	public:
 		bool m_Used;
 		CFixedTime m_Time;
 		std::map<int, int> m_Values;
 	};
 
-	std::map<int, CPointData> m_SavedValues;
+	std::map<int, SPointData> m_SavedValues;
 
 	void HandlePointDragStart();
 	void HandlePointDragEnd(bool Switch);
@@ -112,17 +111,15 @@ private:
 	ESoundSourceOp m_TrackedOp;
 	int m_LayerIndex;
 
-	class CData
+	struct SData
 	{
-	public:
 		CPoint m_OriginalPoint;
 	};
-	CData m_Data;
+	SData m_Data;
 };
 
-class CPropTrackerHelper
+struct SPropTrackerHelper
 {
-public:
 	static int GetDefaultGroupIndex(CEditorMap *pMap);
 	static int GetDefaultLayerIndex(CEditorMap *pMap);
 };
@@ -147,8 +144,8 @@ public:
 			return;
 		m_pObject = pObject;
 
-		m_OriginalGroupIndex = GroupIndex < 0 ? CPropTrackerHelper::GetDefaultGroupIndex(Map()) : GroupIndex;
-		m_OriginalLayerIndex = LayerIndex < 0 ? CPropTrackerHelper::GetDefaultLayerIndex(Map()) : LayerIndex;
+		m_OriginalGroupIndex = GroupIndex < 0 ? SPropTrackerHelper::GetDefaultGroupIndex(Map()) : GroupIndex;
+		m_OriginalLayerIndex = LayerIndex < 0 ? SPropTrackerHelper::GetDefaultLayerIndex(Map()) : LayerIndex;
 		m_CurrentGroupIndex = m_OriginalGroupIndex;
 		m_CurrentLayerIndex = m_OriginalLayerIndex;
 
@@ -166,8 +163,8 @@ public:
 		if(!m_Tracking || Prop == static_cast<E>(-1))
 			return;
 
-		m_CurrentGroupIndex = GroupIndex < 0 ? CPropTrackerHelper::GetDefaultGroupIndex(Map()) : GroupIndex;
-		m_CurrentLayerIndex = LayerIndex < 0 ? CPropTrackerHelper::GetDefaultLayerIndex(Map()) : LayerIndex;
+		m_CurrentGroupIndex = GroupIndex < 0 ? SPropTrackerHelper::GetDefaultGroupIndex(Map()) : GroupIndex;
+		m_CurrentLayerIndex = LayerIndex < 0 ? SPropTrackerHelper::GetDefaultLayerIndex(Map()) : LayerIndex;
 
 		if(State == EEditState::END || State == EEditState::ONE_GO)
 		{

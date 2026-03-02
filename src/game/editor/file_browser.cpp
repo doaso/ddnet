@@ -3,12 +3,13 @@
 
 #include "file_browser.h"
 
-#include <engine/font_icons.h>
 #include <engine/keys.h>
 #include <engine/sound.h>
 #include <engine/storage.h>
 
 #include <game/editor/editor.h>
+
+using namespace FontIcons;
 
 static constexpr const char *FILETYPE_EXTENSIONS[] = {
 	".map",
@@ -587,22 +588,22 @@ const char *CFileBrowser::DetermineFileFontIcon(const CFilelistItem *pItem) cons
 		switch(m_FileType)
 		{
 		case EFileType::MAP:
-			return FontIcon::MAP;
+			return FONT_ICON_MAP;
 		case EFileType::IMAGE:
-			return FontIcon::IMAGE;
+			return FONT_ICON_IMAGE;
 		case EFileType::SOUND:
-			return FontIcon::MUSIC;
+			return FONT_ICON_MUSIC;
 		default:
 			dbg_assert_failed("m_FileType invalid: %d", (int)m_FileType);
 		}
 	}
 	else if(pItem->m_IsLink || str_comp(pItem->m_aFilename, "..") == 0)
 	{
-		return FontIcon::FOLDER_TREE;
+		return FONT_ICON_FOLDER_TREE;
 	}
 	else
 	{
-		return FontIcon::FOLDER;
+		return FONT_ICON_FOLDER;
 	}
 }
 

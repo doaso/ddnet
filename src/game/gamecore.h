@@ -261,6 +261,7 @@ public:
 	bool m_HookHitDisabled;
 	bool m_Super;
 	bool m_Invincible;
+        bool m_IsBlockMode;
 	bool m_HasTelegunGun;
 	bool m_HasTelegunGrenade;
 	bool m_HasTelegunLaser;
@@ -270,7 +271,6 @@ public:
 	bool m_DeepFrozen;
 	bool m_LiveFrozen;
 	CTuningParams m_Tuning;
-
 private:
 	CTeamsCore *m_pTeams;
 	int m_MoveRestrictions;

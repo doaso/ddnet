@@ -20,7 +20,7 @@ void CMapGrid::OnRender(CUIRect View)
 		return;
 	}
 
-	std::shared_ptr<CLayerGroup> pGroup = Map()->SelectedGroup();
+	std::shared_ptr<CLayerGroup> pGroup = Editor()->GetSelectedGroup();
 	if(!pGroup)
 	{
 		return;

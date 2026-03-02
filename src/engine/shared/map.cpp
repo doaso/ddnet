@@ -3,18 +3,12 @@
 #include "map.h"
 
 #include <base/log.h>
-#include <base/system.h>
 
 #include <engine/storage.h>
 
 #include <game/mapitems.h>
 
 CMap::CMap() = default;
-
-CMap::~CMap()
-{
-	Unload();
-}
 
 int CMap::GetDataSize(int Index) const
 {
@@ -76,12 +70,16 @@ int CMap::NumItems() const
 	return m_DataFile.NumItems();
 }
 
-bool CMap::Load(const char *pFullName, IStorage *pStorage, const char *pPath, int StorageType)
+bool CMap::Load(const char *pMapName, int StorageType)
 {
+	IStorage *pStorage = Kernel()->RequestInterface<IStorage>();
+	if(!pStorage)
+		return false;
+
 	// Ensure current datafile is not left in an inconsistent state if loading fails,
 	// by loading the new datafile separately first.
 	CDataFileReader NewDataFile;
-	if(!NewDataFile.Open(pFullName, pStorage, pPath, StorageType))
+	if(!NewDataFile.Open(pStorage, pMapName, StorageType))
 		return false;
 
 	// Check version
@@ -132,13 +130,6 @@ bool CMap::Load(const char *pFullName, IStorage *pStorage, const char *pPath, in
 	return true;
 }
 
-bool CMap::Load(IStorage *pStorage, const char *pPath, int StorageType)
-{
-	char aFilename[IO_MAX_PATH_LENGTH];
-	fs_split_file_extension(fs_filename(pPath), aFilename, sizeof(aFilename));
-	return Load(aFilename, pStorage, pPath, StorageType);
-}
-
 void CMap::Unload()
 {
 	m_DataFile.Close();
@@ -154,21 +145,6 @@ IOHANDLE CMap::File() const
 	return m_DataFile.File();
 }
 
-const char *CMap::FullName() const
-{
-	return m_DataFile.FullName();
-}
-
-const char *CMap::BaseName() const
-{
-	return m_DataFile.BaseName();
-}
-
-const char *CMap::Path() const
-{
-	return m_DataFile.Path();
-}
-
 SHA256_DIGEST CMap::Sha256() const
 {
 	return m_DataFile.Sha256();
@@ -179,9 +155,9 @@ unsigned CMap::Crc() const
 	return m_DataFile.Crc();
 }
 
-int CMap::Size() const
+int CMap::MapSize() const
 {
-	return m_DataFile.Size();
+	return m_DataFile.MapSize();
 }
 
 void CMap::ExtractTiles(CTile *pDest, size_t DestSize, const CTile *pSrc, size_t SrcSize)
@@ -202,7 +178,4 @@ void CMap::ExtractTiles(CTile *pDest, size_t DestSize, const CTile *pSrc, size_t
 	}
 }
 
-extern std::unique_ptr<IMap> CreateMap()
-{
-	return std::make_unique<CMap>();
-}
+extern IEngineMap *CreateEngineMap() { return new CMap; }

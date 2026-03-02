@@ -1,10 +1,25 @@
 #include "connection.h"
 
-#include <base/str.h>
-
 IDbConnection::IDbConnection(const char *pPrefix)
 {
 	str_copy(m_aPrefix, pPrefix);
+}
+
+void IDbConnection::FormatCreateUsers(char *aBuf, unsigned int BufferSize, bool Backup) const
+{
+	str_format(aBuf, BufferSize,
+                "CREATE TABLE IF NOT EXISTS %s_users%s ("
+                " Login VARCHAR(%d) COLLATE %s NOT NULL, "
+                " Password VARCHAR(128) COLLATE %s NOT NULL, "
+		" AdminLevel TINYINT UNSIGNED DEFAULT 0, "
+                " Level UNSIGNED DEFAULT 0, "
+                " XP UNSIGNED DEFAULT 0, "
+                " Points INT UNSIGNED DEFAULT 0, "
+                " DonateRubles INT UNSIGNED DEFAULT 0, "
+                " PRIMARY KEY (Login)"
+		")",
+                GetPrefix(), Backup ? "_backup" : "",
+                MAX_NAME_LENGTH_SQL, BinaryCollate(), BinaryCollate());
 }
 
 void IDbConnection::FormatCreateRace(char *aBuf, unsigned int BufferSize, bool Backup) const

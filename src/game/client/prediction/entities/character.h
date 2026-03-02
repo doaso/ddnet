@@ -67,7 +67,7 @@ public:
 	CTeamsCore *TeamsCore();
 	bool Freeze(int Seconds);
 	bool Freeze();
-	bool Unfreeze();
+	bool UnFreeze();
 	void GiveAllWeapons();
 	int Team();
 	bool CanCollide(int ClientId) override;
@@ -147,8 +147,6 @@ private:
 	int m_AttackTick;
 
 	int m_MoveRestrictions;
-
-	int m_PainSoundTimer;
 
 	// these are non-heldback inputs
 	CNetObj_PlayerInput m_LatestPrevInput;

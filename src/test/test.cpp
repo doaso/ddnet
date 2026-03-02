@@ -1,11 +1,7 @@
 #include "test.h"
 
-#include <base/fs.h>
 #include <base/logger.h>
-#include <base/os.h>
-#include <base/process.h>
-#include <base/str.h>
-#include <base/system.h> // net_init
+#include <base/system.h>
 
 #include <engine/storage.h>
 
@@ -33,7 +29,7 @@ CTestInfo::CTestInfo()
 		}
 	}
 	str_format(m_aFilenamePrefix, sizeof(m_aFilenamePrefix), "%s.%s-%d",
-		aTestCaseName, pTestInfo->name(), process_id());
+		aTestCaseName, pTestInfo->name(), pid());
 	Filename(m_aFilename, sizeof(m_aFilename), ".tmp");
 }
 
@@ -146,7 +142,6 @@ int main(int argc, const char **argv)
 	CCmdlineFix CmdlineFix(&argc, &argv);
 	log_set_global_logger_default();
 	::testing::InitGoogleTest(&argc, const_cast<char **>(argv));
-	GTEST_FLAG_SET(death_test_style, "threadsafe");
 	net_init();
 	return RUN_ALL_TESTS();
 }

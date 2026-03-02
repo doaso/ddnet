@@ -30,6 +30,8 @@ public:
 	CPlayer(CGameContext *pGameServer, uint32_t UniqueClientId, int ClientId, int Team);
 	~CPlayer();
 
+        void Reward(std::uint32_t XP, std::uint32_t Points);
+
 	void Reset();
 
 	void TryRespawn();
@@ -236,6 +238,31 @@ public:
 	bool m_VotedForPractice;
 	int m_SwapTargetsClientId; //Client ID of the swap target for the given player
 	bool m_BirthdayAnnounced;
+        float m_LastTakeFarmZoneTime = 25.0f;
+        float m_LastEffectTime;
+        float m_EffectAngle;
+        int m_HookedPlayerClientId = -1;
+        std::uint8_t m_EffectID;
+        bool m_IsTPSpec;
+        bool m_IsLogined;
+        std::uint8_t m_TryEnterPasswordCount;
+        bool m_IsRegistered;
+        char m_aPassword[128];
+        std::uint8_t m_AdminLevel;
+        std::uint32_t m_Level;
+        std::uint32_t m_XP;
+        static constexpr std::uint32_t m_TargetStageXP = 150;
+        std::uint32_t m_TargetXP;
+        std::uint32_t m_Points;
+        std::uint32_t m_DonateRubles;
+        std::uint32_t m_OrelAndReshkaBid;
+        bool m_OrelAndReshkaIsOrel;
+        int m_OrelAndReshkaFromClientId = -1;
+        std::uint8_t m_DuelScore;
+        bool m_IsDuelStart;
+        std::uint32_t m_DuelBid;
+        std::uint8_t m_DuelRound;
+        int m_DuelFromClientId = -1;
 
 	int m_RescueMode;
 

@@ -25,13 +25,6 @@ enum class TRISTATE
  */
 typedef void *IOHANDLE;
 
-/**
- * Wrapper for asynchronously writing to an @link IOHANDLE @endlink.
- *
- * @ingroup File-IO
- */
-typedef struct ASYNCIO ASYNCIO;
-
 typedef int (*FS_LISTDIR_CALLBACK)(const char *name, int is_dir, int dir_type, void *user);
 
 typedef struct
@@ -107,26 +100,26 @@ typedef struct NETSTATS
 /**
  * A handle for a process.
  *
- * @ingroup Process
+ * @ingroup Shell
  */
 typedef void *PROCESS;
 /**
  * A handle that denotes an invalid process.
  *
- * @ingroup Process
+ * @ingroup Shell
  */
 constexpr PROCESS INVALID_PROCESS = nullptr; // NOLINT(misc-misplaced-const)
 #else
 /**
  * A handle for a process.
  *
- * @ingroup Process
+ * @ingroup Shell
  */
 typedef pid_t PROCESS;
 /**
  * A handle that denotes an invalid process.
  *
- * @ingroup Process
+ * @ingroup Shell
  */
 constexpr PROCESS INVALID_PROCESS = 0;
 #endif

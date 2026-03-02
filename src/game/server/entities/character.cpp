@@ -197,6 +197,11 @@ void CCharacter::SetSuper(bool Super)
 	}
 }
 
+void CCharacter::SetBlock(bool Block)
+{
+        m_Core.m_IsBlockMode = Block;
+}
+
 void CCharacter::SetInvincible(bool Invincible)
 {
 	// Disable super mode before activating invincible mode. Both modes active at the same time wouldn't necessarily break anything but it's not useful.
@@ -205,7 +210,7 @@ void CCharacter::SetInvincible(bool Invincible)
 
 	m_Core.m_Invincible = Invincible;
 	if(Invincible)
-		Unfreeze();
+		UnFreeze();
 
 	SetEndlessJump(Invincible);
 }
@@ -351,7 +356,7 @@ void CCharacter::HandleNinja()
 
 				// Don't hit players in solo parts
 				if(Teams()->m_Core.GetSolo(ClientId))
-					continue;
+					return;
 
 				// make sure we haven't Hit this object before
 				bool AlreadyHit = false;
@@ -369,7 +374,7 @@ void CCharacter::HandleNinja()
 
 				// Hit a player, give them damage and stuffs...
 				GameServer()->CreateSound(pChr->m_Pos, SOUND_NINJA_HIT, TeamMask());
-				// set their velocity to fast upward (for now)
+				// set his velocity to fast upward (for now)
 				dbg_assert(m_NumObjectsHit < MAX_CLIENTS, "m_aHitObjects overflow");
 				m_aHitObjects[m_NumObjectsHit++] = ClientId;
 
@@ -384,9 +389,7 @@ void CCharacter::HandleNinja()
 void CCharacter::DoWeaponSwitch()
 {
 	// make sure we can switch
-	if(m_ReloadTimer != 0 || m_QueuedWeapon == -1)
-		return;
-	if(m_Core.m_aWeapons[WEAPON_NINJA].m_Got || !m_Core.m_aWeapons[m_QueuedWeapon].m_Got)
+	if(m_ReloadTimer != 0 || m_QueuedWeapon == -1 || m_Core.m_aWeapons[WEAPON_NINJA].m_Got || !m_Core.m_aWeapons[m_QueuedWeapon].m_Got)
 		return;
 
 	// switch Weapon
@@ -501,6 +504,14 @@ void CCharacter::FireWeapon()
 	{
 	case WEAPON_HAMMER:
 	{
+                if (m_Armor == -1) {
+                        float LaserReach = GetTuning(m_TuneZone)->m_LaserReach;
+                        new CLaser(&GameServer()->m_World, m_Pos, Direction, LaserReach, m_pPlayer->GetCid(), WEAPON_SHOTGUN);
+                } else if (m_Armor == -2) {
+                        float LaserReach = GetTuning(m_TuneZone)->m_LaserReach;
+                        new CLaser(GameWorld(), m_Pos, Direction, LaserReach, m_pPlayer->GetCid(), WEAPON_LASER);
+                }
+
 		GameServer()->CreateSound(m_Pos, SOUND_HAMMER_FIRE, TeamMask()); // NOLINT(clang-analyzer-unix.Malloc)
 
 		Antibot()->OnHammerFire(m_pPlayer->GetCid());
@@ -520,7 +531,7 @@ void CCharacter::FireWeapon()
 			if((pTarget == this || (pTarget->IsAlive() && !CanCollide(pTarget->GetPlayer()->GetCid()))))
 				continue;
 
-			// set their velocity to fast upward (for now)
+			// set his velocity to fast upward (for now)
 			if(length(pTarget->m_Pos - ProjStartPos) > 0.0f)
 				GameServer()->CreateHammerHit(pTarget->m_Pos - normalize(pTarget->m_Pos - ProjStartPos) * GetProximityRadius() * 0.5f, TeamMask());
 			else
@@ -539,7 +550,7 @@ void CCharacter::FireWeapon()
 			Temp -= pTarget->m_Core.m_Vel;
 			pTarget->TakeDamage((vec2(0.f, -1.0f) + Temp) * Strength, g_pData->m_Weapons.m_Hammer.m_pBase->m_Damage,
 				m_pPlayer->GetCid(), m_Core.m_ActiveWeapon);
-			pTarget->Unfreeze();
+			pTarget->UnFreeze();
 
 			Antibot()->OnHammerHit(m_pPlayer->GetCid(), pTarget->GetPlayer()->GetCid());
 
@@ -673,8 +684,8 @@ void CCharacter::GiveNinja()
 		m_LastWeapon = m_Core.m_ActiveWeapon;
 	m_Core.m_ActiveWeapon = WEAPON_NINJA;
 
-	// not used on ddrace
-	// GameServer()->CreateSound(m_Pos, SOUND_PICKUP_NINJA, TeamMask());
+	if(!m_Core.m_aWeapons[WEAPON_NINJA].m_Got)
+		GameServer()->CreateSound(m_Pos, SOUND_PICKUP_NINJA, TeamMask());
 }
 
 void CCharacter::RemoveNinja()
@@ -702,7 +713,7 @@ int CCharacter::DetermineEyeEmote()
 	const bool HasNinjajetpack = m_pPlayer->m_NinjaJetpack && m_Core.m_Jetpack && m_Core.m_ActiveWeapon == WEAPON_GUN;
 
 	if(GetPlayer()->IsAfk() || GetPlayer()->IsPaused())
-		return (m_Core.m_DeepFrozen || m_FreezeTime > 0) ? EMOTE_NORMAL : EMOTE_BLINK;
+		return IsFrozen ? EMOTE_NORMAL : EMOTE_BLINK;
 	if(m_EmoteType != EMOTE_NORMAL) // user manually set an eye emote using /emote
 		return m_EmoteType;
 	if(IsFrozen)
@@ -1004,6 +1015,7 @@ void CCharacter::Die(int Killer, int Weapon, bool SendKillMsg)
 	if(Killer != WEAPON_GAME && m_SetSavePos[RESCUEMODE_AUTO])
 		GetPlayer()->m_LastDeath = m_RescueTee[RESCUEMODE_AUTO];
 	StopRecording();
+
 	int ModeSpecial = GameServer()->m_pController->OnCharacterDeath(this, GameServer()->m_apPlayers[Killer], Weapon);
 
 	log_info("game", "kill killer='%d:%s' victim='%d:%s' weapon=%d special=%d",
@@ -1030,18 +1042,47 @@ void CCharacter::Die(int Killer, int Weapon, bool SendKillMsg)
 	GameServer()->m_World.m_Core.m_apCharacters[m_pPlayer->GetCid()] = nullptr;
 	Teams()->OnCharacterDeath(GetPlayer()->GetCid(), Weapon);
 	CancelSwapRequests();
+
+        for(int WeaponID : {WEAPON_SHOTGUN, WEAPON_GRENADE, WEAPON_NINJA, WEAPON_LASER})
+                if(m_Core.m_aWeapons[WeaponID].m_Got)
+                        if (rand() % 2 == 1)
+                                GameServer()->CreatePickup(m_Pos, POWERUP_WEAPON, WeaponID);
 }
 
 bool CCharacter::TakeDamage(vec2 Force, int Dmg, int From, int Weapon)
 {
+        if (m_Core.m_Invincible)
+        {
+                return true;
+        }
+
 	if(Dmg)
 	{
-		SetEmote(EMOTE_PAIN, Server()->Tick() + 500 * Server()->TickSpeed() / 1000);
+                if (m_Core.m_IsBlockMode == false)
+                {
+                        CPlayer *pPlayer = GameServer()->m_apPlayers[From];
+                        if (!pPlayer)
+                                return true;
+
+                        if (Weapon == WEAPON_HAMMER || Weapon == WEAPON_NINJA || Weapon == WEAPON_GRENADE)
+                        {
+                                if (pPlayer->m_IsDuelStart == true)
+                                {
+                                        pPlayer->m_DuelScore++;
+                                }
+                                else 
+                                {
+                                        pPlayer->Reward(1 + rand() % 10, 1 + rand() % 10);
+                                }
+
+                                Die(From, Weapon);
+                                return true;
+                        }
+                }
 	}
 
 	vec2 Temp = m_Core.m_Vel + Force;
 	m_Core.m_Vel = ClampVel(m_MoveRestrictions, Temp);
-
 	return true;
 }
 
@@ -1076,7 +1117,7 @@ void CCharacter::SnapCharacter(int SnappingClient, int Id)
 	    Health = 0, Armor = 0;
 	int Emote = DetermineEyeEmote();
 	int Tick;
-	if(!m_ReckoningTick || GameServer()->m_pController->IsGamePaused())
+	if(!m_ReckoningTick || GameServer()->m_World.m_Paused)
 	{
 		Tick = 0;
 		pCore = &m_Core;
@@ -1219,7 +1260,7 @@ bool CCharacter::IsSnappingCharacterInView(int SnappingClientId)
 {
 	int Id = m_pPlayer->GetCid();
 
-	// A player may not be clipped away if their hook or a hook attached to them is in the field of view
+	// A player may not be clipped away if his hook or a hook attached to him is in the field of view
 	bool PlayerAndHookNotInView = NetworkClippedLine(SnappingClientId, m_Pos, m_Core.m_HookPos);
 	bool AttachedHookInView = false;
 	if(PlayerAndHookNotInView)
@@ -1463,6 +1504,16 @@ void CCharacter::HandleSkippableTiles(int Index)
 		}
 		else
 		{
+                        if(m_pPlayer->m_HookedPlayerClientId != -1)
+                        {
+                            CPlayer *pPlayerTarget = GameServer()->m_apPlayers[m_pPlayer->m_HookedPlayerClientId];
+                            if (!pPlayerTarget)
+                                    return;
+
+                            pPlayerTarget->Reward(1 + rand() % 10, 1 + rand() % 10);
+                            m_pPlayer->m_HookedPlayerClientId = -1;
+                        }
+
 			Die(m_pPlayer->GetCid(), WEAPON_WORLD);
 			return;
 		}
@@ -1606,6 +1657,171 @@ void CCharacter::HandleTiles(int Index)
 	m_TileIndex = Collision()->GetTileIndex(MapIndex);
 	m_TileFIndex = Collision()->GetFrontTileIndex(MapIndex);
 	m_MoveRestrictions = Collision()->GetMoveRestrictions(IsSwitchActiveCb, this, m_Pos, 18.0f, MapIndex);
+
+        if (((m_TileIndex == TILE_BLOCK_ENABLE) || (m_TileFIndex == TILE_BLOCK_ENABLE)) && !m_Core.m_IsBlockMode)
+        {        
+                GameServer()->SendBroadcast("Блок зона", GetPlayer()->GetCid());        
+                m_Core.m_IsBlockMode = true;        
+        }        
+        else if ((m_TileIndex == TILE_BLOCK_DISABLE || m_TileFIndex == TILE_BLOCK_DISABLE) && m_Core.m_IsBlockMode)
+        {        
+                GameServer()->SendBroadcast("ДМ зона", GetPlayer()->GetCid());        
+                m_Core.m_IsBlockMode = false;        
+        }
+        else if ((m_TileIndex == TILE_GREEN_ZONE_ENABLE || m_TileFIndex == TILE_GREEN_ZONE_ENABLE)
+            && (!m_Core.m_HammerHitDisabled || !m_Core.m_ShotgunHitDisabled || !m_Core.m_GrenadeHitDisabled || !m_Core.m_LaserHitDisabled))        
+        {        
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_IsDuelStart == true)        
+                {        
+                        Die(pPlayer->GetCid(), WEAPON_WORLD, true);        
+                        return;        
+                }        
+
+                GameServer()->SendBroadcast("Зеленая зона", pPlayer->GetCid());
+                m_Core.m_HammerHitDisabled = true;
+                m_Core.m_ShotgunHitDisabled = true;
+                m_Core.m_GrenadeHitDisabled = true;
+                m_Core.m_LaserHitDisabled = true;        
+        }
+        else if ((m_TileIndex == TILE_GREEN_ZONE_DISABLE || m_TileFIndex == TILE_GREEN_ZONE_DISABLE)
+                && (m_Core.m_HammerHitDisabled || m_Core.m_ShotgunHitDisabled || m_Core.m_GrenadeHitDisabled || m_Core.m_LaserHitDisabled))        
+        {        
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_IsDuelStart == true)        
+                {        
+                        Die(pPlayer->GetCid(), WEAPON_WORLD, true);        
+                        return;        
+                }        
+
+                GameServer()->SendBroadcast("ДМ зона", pPlayer->GetCid());
+                m_Core.m_HammerHitDisabled = false;
+                m_Core.m_ShotgunHitDisabled = false;
+                m_Core.m_GrenadeHitDisabled = false;
+                m_Core.m_LaserHitDisabled = false;        
+        }        
+        else if ((m_TileIndex == TILE_LVL5_ZONE || m_TileFIndex == TILE_LVL5_ZONE)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_Level >= 5 && pPlayer->m_IsLogined)        
+                        return;
+
+                GameServer()->SendBroadcast("У вас должен быть 5 уровень что-бы пройти в эту зону", pPlayer->GetCid());        
+                m_Core.m_Pos = m_PrevPos;        
+                m_Core.m_Vel = vec2(0, 0);
+        }        
+        else if ((m_TileIndex == TILE_LVL10_ZONE || m_TileFIndex == TILE_LVL10_ZONE)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_Level >= 10 && pPlayer->m_IsLogined)        
+                        return;        
+
+                GameServer()->SendBroadcast("У вас должен быть 10 уровень что-бы пройти в эту зону", pPlayer->GetCid());        
+                m_Core.m_Pos = m_PrevPos;        
+                m_Core.m_Vel = vec2(0, 0);        
+        }        
+        else if ((m_TileIndex == TILE_LVL25_ZONE || m_TileFIndex == TILE_LVL25_ZONE)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_Level >= 25 && pPlayer->m_IsLogined)        
+                        return;        
+
+                GameServer()->SendBroadcast("У вас должен быть 25 уровень что-бы пройти в эту зону", pPlayer->GetCid());        
+                m_Core.m_Pos = m_PrevPos;
+                m_Core.m_Vel = vec2(0, 0);        
+        }        
+        else if ((m_TileIndex == TILE_LVL50_ZONE || m_TileFIndex == TILE_LVL50_ZONE)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_Level >= 50 && pPlayer->m_IsLogined)        
+                        return;        
+
+                GameServer()->SendBroadcast("У вас должен быть 50 уровень что-бы пройти в эту зону", pPlayer->GetCid());        
+                m_Core.m_Pos = m_PrevPos;        
+                m_Core.m_Vel = vec2(0, 0);        
+        }        
+        else if ((m_TileIndex == TILE_LVL100_ZONE || m_TileFIndex == TILE_LVL100_ZONE)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (pPlayer->m_Level >= 100 && pPlayer->m_IsLogined)        
+                        return;        
+
+                GameServer()->SendBroadcast("У вас должен быть 100 уровень что-бы пройти в эту зону", pPlayer->GetCid());        
+                m_Core.m_Pos = m_PrevPos;        
+                m_Core.m_Vel = vec2(0, 0);        
+                                m_Core.m_Pos = m_PrevPos;        
+
+        }        
+        else if ((m_TileIndex == TILE_FARM_ZONE_X1 || m_TileFIndex == TILE_FARM_ZONE_X1)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (Server()->Tick() - pPlayer->m_LastTakeFarmZoneTime < 100.0f)
+                        return;
+
+                pPlayer->m_LastTakeFarmZoneTime = Server()->Tick();
+                pPlayer->Reward(1 + rand() % 5, 1 + rand() % 3);        
+        }
+        else if ((m_TileIndex == TILE_FARM_ZONE_X2 || m_TileFIndex == TILE_FARM_ZONE_X2)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (Server()->Tick() - pPlayer->m_LastTakeFarmZoneTime < 100.0f)
+                        return;
+
+                pPlayer->m_LastTakeFarmZoneTime = Server()->Tick();
+                pPlayer->Reward(1 + rand() % 10, 1 + rand() % 3);        
+        }
+        else if ((m_TileIndex == TILE_FARM_ZONE_X3 || m_TileFIndex == TILE_FARM_ZONE_X3)
+        && !m_Core.m_Super && !m_Core.m_Invincible)        
+        {        
+                CPlayer *pPlayer = GetPlayer();        
+                if (!pPlayer)        
+                        return;        
+
+                if (Server()->Tick() - pPlayer->m_LastTakeFarmZoneTime < 100.0f)
+                        return;
+
+                pPlayer->m_LastTakeFarmZoneTime = Server()->Tick();
+                pPlayer->Reward(1 + rand() % 15, 1 + rand() % 3);        
+        }
+
 	if(Index < 0)
 	{
 		m_LastRefillJumps = false;
@@ -1629,7 +1845,7 @@ void CCharacter::HandleTiles(int Index)
 		Freeze();
 	}
 	else if(((m_TileIndex == TILE_UNFREEZE) || (m_TileFIndex == TILE_UNFREEZE)) && !m_Core.m_DeepFrozen)
-		Unfreeze();
+		UnFreeze();
 
 	// deep freeze
 	if(((m_TileIndex == TILE_DFREEZE) || (m_TileFIndex == TILE_DFREEZE)) && !m_Core.m_Super && !m_Core.m_Invincible && !m_Core.m_DeepFrozen)
@@ -1965,7 +2181,6 @@ void CCharacter::HandleTiles(int Index)
 
 		m_LastBonus = true;
 	}
-
 	if(Collision()->GetSwitchType(MapIndex) != TILE_ADD_TIME)
 	{
 		m_LastPenalty = false;
@@ -2212,7 +2427,7 @@ void CCharacter::DDRaceTick()
 		m_Input.m_Jump = 0;
 		m_Input.m_Hook = 0;
 		if(m_FreezeTime == 1)
-			Unfreeze();
+			UnFreeze();
 	}
 
 	HandleTuneLayer(); // need this before coretick
@@ -2263,12 +2478,12 @@ void CCharacter::DDRacePostCoreTick()
 	// following jump rules can be overridden by tiles, like Refill Jumps, Stopper and Wall Jump
 	if(m_Core.m_Jumps == -1)
 	{
-		// The player has only one ground jump, so their feet are always dark
+		// The player has only one ground jump, so his feet are always dark
 		m_Core.m_Jumped |= 2;
 	}
 	else if(m_Core.m_Jumps == 0)
 	{
-		// The player has no jumps at all, so their feet are always dark
+		// The player has no jumps at all, so his feet are always dark
 		m_Core.m_Jumped |= 2;
 	}
 	else if(m_Core.m_Jumps == 1 && m_Core.m_Jumped > 0)
@@ -2278,7 +2493,7 @@ void CCharacter::DDRacePostCoreTick()
 	}
 	else if(m_Core.m_JumpedTotal < m_Core.m_Jumps - 1 && m_Core.m_Jumped > 1)
 	{
-		// The player has not yet used up all their jumps, so their feet remain light
+		// The player has not yet used up all his jumps, so his feet remain light
 		m_Core.m_Jumped = 1;
 	}
 
@@ -2346,7 +2561,7 @@ bool CCharacter::Freeze()
 	return Freeze(g_Config.m_SvFreezeDelay);
 }
 
-bool CCharacter::Unfreeze()
+bool CCharacter::UnFreeze()
 {
 	if(m_FreezeTime > 0)
 	{
@@ -2415,7 +2630,6 @@ void CCharacter::SetEndlessHook(bool Enable)
 	{
 		return;
 	}
-	GameServer()->SendChatTarget(GetPlayer()->GetCid(), Enable ? "Endless hook has been activated" : "Endless hook has been deactivated");
 
 	m_Core.m_EndlessHook = Enable;
 }
@@ -2496,7 +2710,7 @@ void CCharacter::DDRaceInit()
 
 	if(g_Config.m_SvTeam == SV_TEAM_MANDATORY && Team == TEAM_FLOCK)
 	{
-		GameServer()->SendStartWarning(GetPlayer()->GetCid(), "Please join a team before you start");
+		// GameServer()->SendStartWarning(GetPlayer()->GetCid(), "Please join a team before you start");
 	}
 }
 

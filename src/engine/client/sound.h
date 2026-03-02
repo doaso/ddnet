@@ -21,6 +21,7 @@ struct CSample
 	int m_Rate;
 	int m_Channels;
 	int m_LoopStart;
+	int m_LoopEnd;
 	int m_PausedAt;
 
 	float TotalTime() const

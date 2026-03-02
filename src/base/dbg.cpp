@@ -4,7 +4,7 @@
 #include "dbg.h"
 
 #include "logger.h"
-#include "str.h"
+#include "system.h" // TODO: replace with str.h after moving str_format
 
 #include <atomic>
 #include <cstdarg>

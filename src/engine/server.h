@@ -22,7 +22,6 @@
 #include <type_traits>
 
 struct CAntibotRoundData;
-class IMap;
 
 // When recording a demo on the server, the ClientId -1 is used
 enum
@@ -224,6 +223,8 @@ public:
 		return true;
 	}
 
+	virtual void GetMapInfo(char *pMapName, int MapNameSize, int *pMapSize, SHA256_DIGEST *pSha256, int *pMapCrc) = 0;
+
 	virtual bool WouldClientNameChange(int ClientId, const char *pNameRequest) = 0;
 	virtual bool WouldClientClanChange(int ClientId, const char *pClanRequest) = 0;
 	virtual void SetClientName(int ClientId, const char *pName) = 0;
@@ -291,6 +292,8 @@ public:
 
 	virtual void SendMsgRaw(int ClientId, const void *pData, int Size, int Flags) = 0;
 
+	virtual const char *GetMapName() const = 0;
+
 	virtual bool IsSixup(int ClientId) const = 0;
 };
 
@@ -315,8 +318,7 @@ public:
 	//
 	// GlobalSnap is true when sending snapshots to all clients,
 	// otherwise only forced high bandwidth clients would receive snap.
-	// RecordingDemo is true when this snapshot will be recorded to a demo.
-	virtual void OnSnap(int ClientId, bool GlobalSnap, bool RecordingDemo) = 0;
+	virtual void OnSnap(int ClientId, bool GlobalSnap) = 0;
 
 	// Called after sending snapshots to all clients.
 	//
@@ -363,8 +365,6 @@ public:
 	virtual const char *Version() const = 0;
 	virtual const char *NetVersion() const = 0;
 
-	virtual IMap *Map() = 0;
-	virtual const IMap *Map() const = 0;
 	virtual CNetObjHandler *GetNetObjHandler() = 0;
 	virtual protocol7::CNetObjHandler *GetNetObjHandler7() = 0;
 

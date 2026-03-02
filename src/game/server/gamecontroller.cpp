@@ -64,7 +64,7 @@ void IGameController::DoActivityCheck()
 				break;
 				case 1:
 				{
-					// move player to spectator if the reserved slots aren't filled yet, kick them otherwise
+					// move player to spectator if the reserved slots aren't filled yet, kick him otherwise
 					int Spectators = 0;
 					for(auto &pPlayer : GameServer()->m_apPlayers)
 						if(pPlayer && pPlayer->GetTeam() == TEAM_SPECTATORS)
@@ -440,9 +440,9 @@ void IGameController::OnPlayerDisconnect(class CPlayer *pPlayer, const char *pRe
 	{
 		char aBuf[512];
 		if(pReason && *pReason)
-			str_format(aBuf, sizeof(aBuf), "'%s' has left the game (%s)", Server()->ClientName(ClientId), pReason);
+			str_format(aBuf, sizeof(aBuf), "%s отключился", Server()->ClientName(ClientId));
 		else
-			str_format(aBuf, sizeof(aBuf), "'%s' has left the game", Server()->ClientName(ClientId));
+			str_format(aBuf, sizeof(aBuf), "%s отключился", Server()->ClientName(ClientId));
 		GameServer()->SendChat(-1, TEAM_ALL, aBuf, -1, CGameContext::FLAG_SIX);
 
 		str_format(aBuf, sizeof(aBuf), "leave player='%d:%s'", ClientId, Server()->ClientName(ClientId));
@@ -455,7 +455,7 @@ void IGameController::EndRound()
 	if(m_Warmup) // game can't end when we are running warmup
 		return;
 
-	SetGamePaused(true);
+	GameServer()->m_World.m_Paused = true;
 	m_GameOverTick = Server()->Tick();
 	m_SuddenDeath = 0;
 }
@@ -483,21 +483,6 @@ const char *IGameController::GetTeamName(int Team)
 	}
 }
 
-void IGameController::SetGamePaused(bool Paused)
-{
-	// Cannot unpause the game while gameover is active
-	if(m_GameOverTick != -1 && !Paused)
-	{
-		return;
-	}
-	GameServer()->m_World.m_Paused = Paused;
-}
-
-bool IGameController::IsGamePaused() const
-{
-	return GameServer()->m_World.m_Paused;
-}
-
 void IGameController::StartRound()
 {
 	ResetGame();
@@ -505,7 +490,7 @@ void IGameController::StartRound()
 	m_RoundStartTick = Server()->Tick();
 	m_SuddenDeath = 0;
 	m_GameOverTick = -1;
-	SetGamePaused(false);
+	GameServer()->m_World.m_Paused = false;
 	Server()->DemoRecorder_HandleAutoStart();
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "start round type='%s' teamplay='%d'", m_pGameType, m_GameFlags & GAMEFLAG_TEAMS);
@@ -527,6 +512,11 @@ void IGameController::OnReset()
 int IGameController::OnCharacterDeath(class CCharacter *pVictim, class CPlayer *pKiller, int Weapon)
 {
 	return 0;
+}
+
+void IGameController::OnFlagReturn(CFlag *pFlag)
+{
+
 }
 
 void IGameController::OnCharacterSpawn(class CCharacter *pChr)
@@ -607,7 +597,7 @@ void IGameController::Snap(int SnappingClient)
 		pGameInfoObj->m_GameStateFlags |= GAMESTATEFLAG_GAMEOVER;
 	if(m_SuddenDeath)
 		pGameInfoObj->m_GameStateFlags |= GAMESTATEFLAG_SUDDENDEATH;
-	if(IsGamePaused())
+	if(GameServer()->m_World.m_Paused)
 		pGameInfoObj->m_GameStateFlags |= GAMESTATEFLAG_PAUSED;
 	pGameInfoObj->m_RoundStartTick = m_RoundStartTick;
 	pGameInfoObj->m_WarmupTimer = m_Warmup;
@@ -658,7 +648,7 @@ void IGameController::Snap(int SnappingClient)
 		GAMEINFOFLAG_ENTITIES_DDRACE |
 		GAMEINFOFLAG_ENTITIES_RACE |
 		GAMEINFOFLAG_RACE;
-	pGameInfoEx->m_Flags2 = GAMEINFOFLAG2_HUD_DDRACE | GAMEINFOFLAG2_DDRACE_TEAM | GAMEINFOFLAG2_PREDICT_EVENTS;
+	pGameInfoEx->m_Flags2 = GAMEINFOFLAG2_HUD_DDRACE | GAMEINFOFLAG2_DDRACE_TEAM;
 	if(g_Config.m_SvNoWeakHook)
 		pGameInfoEx->m_Flags2 |= GAMEINFOFLAG2_NO_WEAK_HOOK;
 	pGameInfoEx->m_Version = GAMEINFO_CURVERSION;
@@ -675,7 +665,7 @@ void IGameController::Snap(int SnappingClient)
 			pGameData->m_GameStateFlags |= protocol7::GAMESTATEFLAG_GAMEOVER;
 		if(m_SuddenDeath)
 			pGameData->m_GameStateFlags |= protocol7::GAMESTATEFLAG_SUDDENDEATH;
-		if(IsGamePaused())
+		if(GameServer()->m_World.m_Paused)
 			pGameData->m_GameStateFlags |= protocol7::GAMESTATEFLAG_PAUSED;
 
 		pGameData->m_GameStateEndTick = 0;
@@ -684,28 +674,12 @@ void IGameController::Snap(int SnappingClient)
 		if(!pRaceData)
 			return;
 
-		CFinishTime MapTime = SnapMapBestTime(SnappingClient);
-		int BestTime = MapTime.m_Seconds > 0 ? MapTime.m_Seconds * 1000 + MapTime.m_Milliseconds : -1;
-
-		pRaceData->m_BestTime = BestTime;
+		pRaceData->m_BestTime = m_CurrentRecord.has_value() && !g_Config.m_SvHideScore ? round_to_int(m_CurrentRecord.value() * 1000) : -1;
 		pRaceData->m_Precision = 2;
 		pRaceData->m_RaceFlags = protocol7::RACEFLAG_KEEP_WANTED_WEAPON;
 	}
 
 	GameServer()->SnapSwitchers(SnappingClient);
-
-	if(!Server()->IsSixup(SnappingClient) && GameServer()->GetClientVersion(SnappingClient) >= VERSION_DDNET_MAP_BESTTIME)
-	{
-		CFinishTime MapTime = SnapMapBestTime(SnappingClient);
-		if(MapTime.m_Seconds != FinishTime::UNSET)
-		{
-			CNetObj_MapBestTime *pMapTimeMsg = Server()->SnapNewItem<CNetObj_MapBestTime>(0);
-			if(!pMapTimeMsg)
-				return;
-			pMapTimeMsg->m_MapBestTimeSeconds = MapTime.m_Seconds;
-			pMapTimeMsg->m_MapBestTimeMillis = MapTime.m_Milliseconds;
-		}
-	}
 }
 
 int IGameController::GetAutoTeam(int NotThisId)
@@ -714,7 +688,7 @@ int IGameController::GetAutoTeam(int NotThisId)
 
 	if(CanJoinTeam(Team, NotThisId, nullptr, 0))
 		return Team;
-	return TEAM_SPECTATORS;
+	return -1;
 }
 
 bool IGameController::CanJoinTeam(int Team, int NotThisId, char *pErrorReason, int ErrorReasonSize)

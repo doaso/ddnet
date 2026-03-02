@@ -1,4 +1,3 @@
-#include "aio.h"
 #include "color.h"
 #include "logger.h"
 #include "system.h"
@@ -161,10 +160,7 @@ public:
 		case LEVEL_WARN: AndroidLevel = ANDROID_LOG_WARN; break;
 		case LEVEL_ERROR: AndroidLevel = ANDROID_LOG_ERROR; break;
 		}
-		char aTag[64];
-		str_copy(aTag, ANDROID_PACKAGE_NAME "/");
-		str_append(aTag, pMessage->m_aSystem);
-		__android_log_write(AndroidLevel, aTag, pMessage->Message());
+		__android_log_write(AndroidLevel, pMessage->m_aSystem, pMessage->Message());
 	}
 };
 std::unique_ptr<ILogger> log_logger_android()

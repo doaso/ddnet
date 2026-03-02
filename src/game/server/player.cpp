@@ -40,8 +40,50 @@ CPlayer::~CPlayer()
 	m_pCharacter = nullptr;
 }
 
+void CPlayer::Reward(std::uint32_t XP, std::uint32_t Points)
+{
+        if (m_IsLogined == false)
+        {
+            	char aBuf[255];
+                str_format(aBuf, sizeof(aBuf),
+                        "Вы не можете взаимодействовать с серверными системами!\n%s",
+                        m_IsRegistered ?
+                        "Используйте /login что-бы войти в аккаунт" :
+                        "Используйте /register что-бы создать аккаунт");
+                GameServer()->SendChatTarget(m_ClientId, aBuf);
+                GameServer()->SendBroadcast(aBuf, m_ClientId);
+
+                return;
+        }
+
+        if (m_XP >= m_TargetXP)
+        {
+                m_Level += 1;
+                m_TargetXP = m_TargetStageXP * m_Level;
+                m_XP = 0;
+                GameServer()->Score()->ChangeLevel(Server()->ClientName(m_ClientId), m_Level);
+        }
+        else
+        {
+                m_XP += XP;
+        }
+
+        GameServer()->Score()->ChangeXP(Server()->ClientName(m_ClientId), m_XP);
+        m_Points += Points;
+        GameServer()->Score()->ChangePoints(Server()->ClientName(m_ClientId), m_Points);
+
+        char aBuf[256];
+        str_format(aBuf, sizeof(aBuf), 
+                "%i LVL %i/%i XP | %i ПОЙНТОВ\n"
+                "+%i XP\n"
+                "+%i ПОЙНТОВ",
+                m_Level, m_XP, m_TargetXP, m_Points, XP, Points);
+        GameServer()->SendBroadcast(aBuf, m_ClientId);
+}
+
 void CPlayer::Reset()
 {
+        m_HookedPlayerClientId = -1;
 	m_DieTick = Server()->Tick();
 	m_PreviousDieTick = m_DieTick;
 	m_JoinTick = Server()->Tick();
@@ -133,6 +175,7 @@ void CPlayer::Reset()
 	int64_t TickSpeed = Server()->TickSpeed();
 	// If the player joins within ten seconds of the server becoming
 	// non-empty, allow them to vote immediately. This allows players to
+        //
 	// vote after map changes or when they join an empty server.
 	//
 	// Otherwise, block voting in the beginning after joining.
@@ -215,13 +258,13 @@ void CPlayer::Tick()
 	{
 		SetInitialAfk(true);
 
-		char aBuf[512];
-		str_format(aBuf, sizeof(aBuf), "'%s' would have timed out, but can use timeout protection now", Server()->ClientName(m_ClientId));
-		GameServer()->SendChat(-1, TEAM_ALL, aBuf);
-		Server()->ResetNetErrorString(m_ClientId);
+		// char aBuf[512];
+		// str_format(aBuf, sizeof(aBuf), "'%s' would have timed out, but can use timeout protection now", Server()->ClientName(m_ClientId));
+		// GameServer()->SendChat(-1, TEAM_ALL, aBuf);
+		// Server()->ResetNetErrorString(m_ClientId);
 	}
 
-	if(!GameServer()->m_pController->IsGamePaused())
+	if(!GameServer()->m_World.m_Paused)
 	{
 		int EarliestRespawnTick = m_PreviousDieTick + Server()->TickSpeed() * 3;
 		int RespawnTick = maximum(m_DieTick, EarliestRespawnTick) + 2;
@@ -235,6 +278,153 @@ void CPlayer::Tick()
 				ProcessPause();
 				if(!m_Paused)
 					m_ViewPos = m_pCharacter->m_Pos;
+
+                                if (m_pCharacter->Core()->HookedPlayer() != -1)
+                                {
+                                        CPlayer *pPlayerTarget = GameServer()->m_apPlayers[m_pCharacter->Core()->HookedPlayer()];
+                                        if(!pPlayerTarget)
+                                                return;
+
+                                        pPlayerTarget->m_HookedPlayerClientId = m_ClientId;
+                                }
+
+                                if (m_IsDuelStart == true && m_DuelFromClientId != -1)
+                                {
+                                        CPlayer *pPlayerTarget = GameServer()->m_apPlayers[m_DuelFromClientId];
+                                        if(!pPlayerTarget)
+                                        {
+                                                GameServer()->m_pController->Teams().SetForceCharacterTeam(m_ClientId, 0);
+                                                m_IsDuelStart = false;
+                                                return;
+                                        }
+
+                                        if (m_DuelScore == m_DuelRound) {
+                                                m_IsDuelStart = false;
+                                                pPlayerTarget->m_IsDuelStart = false;
+                                                m_DuelFromClientId = -1;
+                                                GameServer()->SendBroadcast("Победа!", m_ClientId);
+                                                GameServer()->SendBroadcast("Поражение!", m_DuelFromClientId);
+
+                                                // Send global chat announcement
+                                                char aBuf[256];
+                                                str_format(aBuf, sizeof(aBuf), "Игрок '%s' победил игрока '%s' со счётом %i:%i.",
+                                                        Server()->ClientName(m_ClientId),
+                                                        Server()->ClientName(m_DuelFromClientId),
+                                                        m_DuelScore,
+                                                        pPlayerTarget->m_DuelScore);
+                                                GameServer()->SendChat(-1, TEAM_ALL, aBuf);
+
+                                                char aWinBuf[256];
+                                                str_format(aWinBuf, sizeof(aWinBuf), "Победа! +%i поинтов.", m_DuelBid);
+                                                GameServer()->SendChatTarget(m_ClientId, aWinBuf);
+
+                                                char aLoseBuf[256];
+                                                str_format(aLoseBuf, sizeof(aLoseBuf), "Поражение! -%i поинтов.", m_DuelBid);
+                                                GameServer()->SendChatTarget(m_DuelFromClientId, aLoseBuf);
+
+                                                m_Points += m_DuelBid;
+                                                GameServer()->Score()->ChangePoints(Server()->ClientName(m_ClientId), m_Points);
+
+                                                pPlayerTarget->m_Points -= m_DuelBid;
+                                                GameServer()->Score()->ChangePoints(Server()->ClientName(m_DuelFromClientId), m_Points);
+
+                                                GameServer()->m_pController->Teams().SetForceCharacterTeam(pPlayerTarget->GetCid(), 0);
+                                                GameServer()->m_pController->Teams().SetForceCharacterTeam(m_ClientId, 0);
+                                                return;
+                                        }
+
+                                        if (pPlayerTarget->m_DuelScore == m_DuelRound) {
+                                                m_IsDuelStart = false;
+                                                pPlayerTarget->m_IsDuelStart = false;
+                                                m_DuelFromClientId = -1;
+                                                GameServer()->SendBroadcast("Поражение!", m_ClientId);
+                                                GameServer()->SendBroadcast("Победа!", pPlayerTarget->GetCid());
+
+                                                // Send global chat announcement
+                                                char aBuf[256];
+                                                str_format(aBuf, sizeof(aBuf), "Игрок '%s' победил игрока '%s' со счётом %i:%i.",
+                                                        Server()->ClientName(pPlayerTarget->GetCid()),
+                                                        Server()->ClientName(m_ClientId),
+                                                        pPlayerTarget->m_DuelScore,
+                                                        m_DuelScore);
+                                                GameServer()->SendChat(-1, TEAM_ALL, aBuf);
+
+                                                char aLoseBuf[256];
+                                                str_format(aLoseBuf, sizeof(aLoseBuf), "Поражение! -%i поинтов.", m_DuelBid);
+                                                GameServer()->SendChatTarget(m_ClientId, aLoseBuf);
+
+                                                char aWinBuf[256];
+                                                str_format(aWinBuf, sizeof(aWinBuf), "Победа! +%i поинтов.", m_DuelBid);
+                                                GameServer()->SendChatTarget(pPlayerTarget->GetCid(), aWinBuf);
+
+                                                m_Points -= m_DuelBid;
+                                                GameServer()->Score()->ChangePoints(Server()->ClientName(m_ClientId), m_Points);
+
+                                                pPlayerTarget->m_Points += m_DuelBid;
+                                                GameServer()->Score()->ChangePoints(Server()->ClientName(pPlayerTarget->GetCid()), m_Points);
+
+                                                GameServer()->m_pController->Teams().SetForceCharacterTeam(pPlayerTarget->GetCid(), 0);
+                                                GameServer()->m_pController->Teams().SetForceCharacterTeam(m_ClientId, 0);
+                                                return;
+                                        }
+
+                                        char aBuf[256];
+                                        str_format(aBuf, sizeof(aBuf), 
+                                                "%s VS %s\n"
+                                                "%i/%i : %i/%i",
+                                                Server()->ClientName(m_ClientId), Server()->ClientName(m_DuelFromClientId),
+                                                m_DuelScore, m_DuelRound,
+                                                pPlayerTarget->m_DuelScore, m_DuelRound);
+                                        GameServer()->SendBroadcast(aBuf, m_ClientId);
+                                        GameServer()->SendBroadcast(aBuf, m_DuelFromClientId);
+                                }
+
+                                if (m_EffectID == 1)
+                                {
+                                        if (Server()->Tick() >= m_LastEffectTime)
+                                        {
+                                                m_LastEffectTime = Server()->Tick() + Server()->TickSpeed();
+                                                GameServer()->CreateDeath(m_pCharacter->m_Pos, m_ClientId);
+                                        }
+                                }
+                                else if (m_EffectID == 2)
+                                {
+                                    if (Server()->Tick() >= m_LastEffectTime + 0.1f)
+                                    {
+                                            m_LastEffectTime = Server()->Tick() + (Server()->TickSpeed() / 10);
+
+                                            constexpr float AngleStep = 2.0f * pi / 8.0f;
+                                            vec2 Offset = vec2(cosf(m_EffectAngle) * 200.0f, sinf(m_EffectAngle) * 200.0f);
+                                            vec2 ExplosionPos = m_pCharacter->GetPos() + Offset;
+                                            GameServer()->CreateExplosion(ExplosionPos, m_ClientId, WEAPON_WORLD, true, -1);
+
+                                            m_EffectAngle += AngleStep;
+                                            if (m_EffectAngle >= 2.0f * pi)
+                                            {
+                                                    m_EffectAngle -= 2.0f * pi;
+                                            }
+                                    }
+                                }
+                                else if (m_EffectID == 3)
+                                {
+                                        if (Server()->Tick() >= m_LastEffectTime)
+                                        {
+                                                m_LastEffectTime = Server()->Tick() + Server()->TickSpeed();
+                                                GameServer()->CreateBirthdayEffect(m_pCharacter->m_Pos);
+                                        }
+                                }
+                                else if (m_EffectID == 4) // Почини этот костыль
+                                {
+                                        m_pCharacter->SetArmor(-1);
+                                }
+                                else if (m_EffectID == 5)
+                                {
+                                        m_pCharacter->SetArmor(-2);
+                                }
+                                else
+                                {
+                                        m_pCharacter->SetArmor(0);
+                                }
 			}
 			else if(!m_pCharacter->IsPaused())
 			{
@@ -302,7 +492,7 @@ void CPlayer::PostPostTick()
 	if(!Server()->ClientIngame(m_ClientId))
 		return;
 
-	if(!GameServer()->m_pController->IsGamePaused() && !m_pCharacter && m_Spawning && m_WeakHookSpawn)
+	if(!GameServer()->m_World.m_Paused && !m_pCharacter && m_Spawning && m_WeakHookSpawn)
 		TryRespawn();
 }
 
@@ -319,10 +509,22 @@ void CPlayer::Snap(int SnappingClient)
 	if(!pClientInfo)
 		return;
 
-	StrToInts(pClientInfo->m_aName, std::size(pClientInfo->m_aName), Server()->ClientName(m_ClientId));
-	StrToInts(pClientInfo->m_aClan, std::size(pClientInfo->m_aClan), Server()->ClientClan(m_ClientId));
+    StrToInts(pClientInfo->m_aName, std::size(pClientInfo->m_aName), Server()->ClientName(m_ClientId));
+    if (!m_IsLogined) {
+        StrToInts(pClientInfo->m_aClan, 4, "GHOST");
+    }
+
+    char aBuf[MAX_CLAN_LENGTH];
+    str_format(aBuf, sizeof(aBuf), "LVL: %d", m_Level);
+    StrToInts(pClientInfo->m_aClan, std::size(pClientInfo->m_aClan), aBuf);
+
 	pClientInfo->m_Country = Server()->ClientCountry(m_ClientId);
-	StrToInts(pClientInfo->m_aSkin, std::size(pClientInfo->m_aSkin), m_TeeInfos.m_aSkinName);
+    if (!m_IsLogined) {
+        StrToInts(pClientInfo->m_aSkin, 8, "ghostjtj");
+    } else {
+        StrToInts(pClientInfo->m_aSkin, std::size(pClientInfo->m_aSkin), m_TeeInfos.m_aSkinName);
+    }
+
 	pClientInfo->m_UseCustomColor = m_TeeInfos.m_UseCustomColor;
 	pClientInfo->m_ColorBody = m_TeeInfos.m_ColorBody;
 	pClientInfo->m_ColorFeet = m_TeeInfos.m_ColorFeet;
@@ -445,7 +647,9 @@ void CPlayer::Snap(int SnappingClient)
 	if(!pDDNetPlayer)
 		return;
 
-	if((SnappingClient >= 0 && Server()->IsRconAuthed(SnappingClient)) || !Server()->HasAuthHidden(m_ClientId))
+        if (m_AdminLevel != 0)
+                pDDNetPlayer->m_AuthLevel = AUTHED_ADMIN;
+        else if((SnappingClient >= 0 && Server()->IsRconAuthed(SnappingClient)) || !Server()->HasAuthHidden(m_ClientId))
 		pDDNetPlayer->m_AuthLevel = Server()->GetAuthedState(m_ClientId);
 	else
 		pDDNetPlayer->m_AuthLevel = AUTHED_NO;
@@ -969,12 +1173,6 @@ void CPlayer::ProcessScoreResult(CScorePlayerResult &Result)
 			{
 				GameServer()->Score()->PlayerData(m_ClientId)->Set(Result.m_Data.m_Info.m_Time.value(), Result.m_Data.m_Info.m_aTimeCp);
 				Server()->SetClientScore(m_ClientId, Result.m_Data.m_Info.m_Time.value());
-				// update map best time if player's time is better
-				if(!GameServer()->m_pController->m_CurrentRecord.has_value() ||
-					Result.m_Data.m_Info.m_Time.value() < GameServer()->m_pController->m_CurrentRecord.value())
-				{
-					GameServer()->Score()->LoadBestTime();
-				}
 			}
 			Server()->ExpireServerInfo();
 			int Birthday = Result.m_Data.m_Info.m_Birthday;
@@ -994,6 +1192,27 @@ void CPlayer::ProcessScoreResult(CScorePlayerResult &Result)
 				GameServer()->CreateBirthdayEffect(GetCharacter()->m_Pos, GetCharacter()->TeamMask());
 			}
 			GameServer()->SendRecord(m_ClientId);
+            m_TryEnterPasswordCount = 5;
+            m_IsLogined = false;
+            m_IsRegistered = Result.m_Data.m_Info.m_IsRegistered;
+            str_copy(m_aPassword, Result.m_Data.m_Info.m_aPassword, sizeof(m_aPassword));
+            m_AdminLevel = Result.m_Data.m_Info.m_AdminLevel;
+            m_Level = Result.m_Data.m_Info.m_Level;
+            m_XP = Result.m_Data.m_Info.m_XP;
+            m_Points = Result.m_Data.m_Info.m_Points;
+            m_TargetXP = m_TargetStageXP * m_Level;
+            m_DonateRubles = Result.m_Data.m_Info.m_DonateRubles;
+            m_EffectID = 0;
+            m_IsTPSpec = false;
+
+            char aBuf[512];
+            str_format(aBuf, sizeof(aBuf),
+                    "Добро пожаловать на сервер ddrace.ru\n%s",
+                    m_IsRegistered ?
+                    "Используйте /login что-бы войти в аккаунт\n" :
+                    "Используйте /register что-бы создать аккаунт\n");
+            GameServer()->SendChatTarget(m_ClientId, aBuf);
+            GameServer()->SendBroadcast(aBuf, m_ClientId);
 			break;
 		}
 		case CScorePlayerResult::PLAYER_TIMECP:

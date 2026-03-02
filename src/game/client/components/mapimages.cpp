@@ -140,8 +140,7 @@ void CMapImages::OnMapLoadImpl(class CLayers *pLayers, IMap *pMap)
 					!str_comp(pName, "grass_main") ||
 					!str_comp(pName, "winter_main") ||
 					!str_comp(pName, "generic_shadows") ||
-					!str_comp(pName, "generic_unhookable") ||
-					!str_comp(pName, "easter");
+					!str_comp(pName, "generic_unhookable");
 			}
 			str_format(aPath, sizeof(aPath), "mapres/%s%s.png", pName, Translated ? "_0.7" : "");
 			m_aTextures[i] = Graphics()->LoadTexture(aPath, IStorage::TYPE_ALL, LoadFlag);
@@ -179,7 +178,9 @@ void CMapImages::OnMapLoadImpl(class CLayers *pLayers, IMap *pMap)
 
 void CMapImages::OnMapLoad()
 {
-	OnMapLoadImpl(GameClient()->Layers(), GameClient()->Map());
+	IMap *pMap = Kernel()->RequestInterface<IMap>();
+	CLayers *pLayers = GameClient()->Layers();
+	OnMapLoadImpl(pLayers, pMap);
 }
 
 void CMapImages::LoadBackground(class CLayers *pLayers, class IMap *pMap)

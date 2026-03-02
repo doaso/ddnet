@@ -11,8 +11,6 @@
 #include <game/client/component.h>
 #include <game/client/ui_rect.h>
 
-#include <optional>
-
 class CCommunityIcon
 {
 	friend class CCommunityIcons;
@@ -78,7 +76,7 @@ private:
 	std::vector<CCommunityIcon> m_vCommunityIcons;
 	std::deque<std::shared_ptr<CCommunityIconLoadJob>> m_CommunityIconLoadJobs;
 	std::deque<std::shared_ptr<CCommunityIconDownloadJob>> m_CommunityIconDownloadJobs;
-	std::optional<SHA256_DIGEST> m_CommunityIconsInfoSha256;
+	SHA256_DIGEST m_CommunityIconsInfoSha256 = SHA256_ZEROED;
 	static int FileScan(const char *pName, int IsDir, int DirType, void *pUser);
 	bool LoadFile(const char *pPath, int DirType, CImageInfo &Info, CImageInfo &InfoGrayscale, SHA256_DIGEST &Sha256);
 	void LoadFinish(const char *pCommunityId, CImageInfo &Info, CImageInfo &InfoGrayscale, const SHA256_DIGEST &Sha256);

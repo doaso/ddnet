@@ -6,8 +6,7 @@
 
 #include <base/log.h>
 #include <base/math.h>
-#include <base/sphore.h>
-#include <base/thread.h>
+#include <base/tl/threading.h>
 
 #include <engine/shared/config.h>
 #include <engine/shared/localization.h>
@@ -821,8 +820,8 @@ void CGraphicsBackend_SDL_GL::ClampDriverVersion(EBackendType BackendType)
 	else if(BackendType == BACKEND_TYPE_VULKAN)
 	{
 #if defined(CONF_BACKEND_VULKAN)
-		g_Config.m_GfxGLMajor = BACKEND_VULKAN_VERSION_MAJOR;
-		g_Config.m_GfxGLMinor = BACKEND_VULKAN_VERSION_MINOR;
+		g_Config.m_GfxGLMajor = gs_BackendVulkanMajor;
+		g_Config.m_GfxGLMinor = gs_BackendVulkanMinor;
 		g_Config.m_GfxGLPatch = 0;
 #endif
 	}
@@ -979,8 +978,8 @@ bool CGraphicsBackend_SDL_GL::GetDriverVersion(EGraphicsDriverAgeType DriverAgeT
 #ifdef CONF_BACKEND_VULKAN
 		if(DriverAgeType == GRAPHICS_DRIVER_AGE_TYPE_DEFAULT)
 		{
-			Major = BACKEND_VULKAN_VERSION_MAJOR;
-			Minor = BACKEND_VULKAN_VERSION_MINOR;
+			Major = gs_BackendVulkanMajor;
+			Minor = gs_BackendVulkanMinor;
 			Patch = 0;
 			return true;
 		}
@@ -1715,10 +1714,6 @@ int CGraphicsBackend_SDL_GL::WindowOpen()
 
 void CGraphicsBackend_SDL_GL::SetWindowGrab(bool Grab)
 {
-	// Works around https://github.com/libsdl-org/sdl2-compat/issues/578.
-	if(!m_pWindow)
-		return;
-
 	SDL_SetWindowGrab(m_pWindow, Grab ? SDL_TRUE : SDL_FALSE);
 }
 

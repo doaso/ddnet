@@ -28,23 +28,29 @@ CBackground::~CBackground()
 	delete m_pBackgroundImages;
 }
 
+CBackgroundEngineMap *CBackground::CreateBGMap()
+{
+	return new CBackgroundEngineMap;
+}
+
 void CBackground::OnInit()
 {
-	m_pBackgroundMap = CreateMap();
-	m_pMap = m_pBackgroundMap.get();
+	m_pBackgroundMap = CreateBGMap();
+	m_pMap = m_pBackgroundMap;
 
 	m_pImages->OnInterfacesInit(GameClient());
+	Kernel()->RegisterInterface(m_pBackgroundMap);
 	if(g_Config.m_ClBackgroundEntities[0] != '\0' && str_comp(g_Config.m_ClBackgroundEntities, CURRENT_MAP))
 		LoadBackground();
 }
 
 void CBackground::LoadBackground()
 {
-	if(m_Loaded && m_pMap == m_pBackgroundMap.get())
+	if(m_Loaded && m_pMap == m_pBackgroundMap)
 		m_pMap->Unload();
 
 	m_Loaded = false;
-	m_pMap = m_pBackgroundMap.get();
+	m_pMap = m_pBackgroundMap;
 	m_pLayers = m_pBackgroundLayers;
 	m_pImages = m_pBackgroundImages;
 
@@ -57,7 +63,7 @@ void CBackground::LoadBackground()
 		str_format(aBuf, sizeof(aBuf), "maps/%s%s", g_Config.m_ClBackgroundEntities, str_endswith(g_Config.m_ClBackgroundEntities, ".map") ? "" : ".map");
 		if(str_comp(g_Config.m_ClBackgroundEntities, CURRENT_MAP) == 0)
 		{
-			m_pMap = GameClient()->Map();
+			m_pMap = Kernel()->RequestInterface<IEngineMap>();
 			if(m_pMap->IsLoaded())
 			{
 				m_pLayers = GameClient()->Layers();
@@ -65,7 +71,7 @@ void CBackground::LoadBackground()
 				m_Loaded = true;
 			}
 		}
-		else if(m_pMap->Load(g_Config.m_ClBackgroundEntities, Storage(), aBuf, IStorage::TYPE_ALL))
+		else if(m_pMap->Load(aBuf, IStorage::TYPE_ALL))
 		{
 			m_pLayers->Init(m_pMap, true);
 			NeedImageLoading = true;

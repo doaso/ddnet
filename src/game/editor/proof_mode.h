@@ -3,10 +3,6 @@
 
 #include "component.h"
 
-#include <base/vmath.h>
-
-#include <vector>
-
 class CProofMode : public CEditorComponent
 {
 public:
@@ -21,29 +17,22 @@ public:
 	void Toggle();
 	void SetModeMenu();
 	void SetModeIngame();
-	int CurrentMenuProofIndex() const;
-	void SetCurrentMenuProofIndex(int MenuProofIndex);
-	const std::vector<vec2> &MenuBackgroundPositions() const;
-	vec2 CurrentMenuBackgroundPosition() const;
-	const char *MenuBackgroundPositionName(int MenuProofIndex) const;
-	const std::vector<int> &MenuBackgroundCollisions(int MenuProofIndex) const;
-	void InitMenuBackgroundPositions();
 
-private:
-	enum class EProofBorder
+	enum EProofBorder
 	{
-		OFF,
-		INGAME,
-		MENU,
+		PROOF_BORDER_OFF,
+		PROOF_BORDER_INGAME,
+		PROOF_BORDER_MENU
 	};
 	EProofBorder m_ProofBorders;
 
 	int m_CurrentMenuProofIndex;
 	std::vector<vec2> m_vMenuBackgroundPositions;
 	std::vector<const char *> m_vpMenuBackgroundPositionNames;
-	std::vector<std::vector<int>> m_vvMenuBackgroundCollisions;
+	std::vector<std::vector<int>> m_vMenuBackgroundCollisions;
 
-	void InitMenuBackgroundPositionNames();
+	void SetMenuBackgroundPositionNames();
+	void ResetMenuBackgroundPositions();
 };
 
 #endif

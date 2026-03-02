@@ -10,7 +10,7 @@
 #include <game/collision.h>
 #include <game/mapitems.h>
 
-static constexpr int PICKUP_PHYSICS_RADIUS = 14;
+static constexpr int gs_PickupPhysSize = 14;
 
 void CPickup::Tick()
 {
@@ -34,8 +34,7 @@ void CPickup::Tick()
 			case POWERUP_HEALTH:
 				if(!GameWorld()->m_WorldConfig.m_PredictDDRace)
 					continue;
-				if(pChr->Freeze())
-					GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_HEALTH, pChr->GetCid());
+				pChr->Freeze();
 				break;
 
 			case POWERUP_ARMOR:
@@ -56,10 +55,7 @@ void CPickup::Tick()
 				pChr->SetNinjaActivationTick(-500);
 				pChr->SetNinjaCurrentMoveTime(0);
 				if(CreateSound)
-				{
 					pChr->SetLastWeapon(WEAPON_GUN);
-					GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_ARMOR, pChr->GetCid());
-				}
 				if(pChr->GetActiveWeapon() >= WEAPON_SHOTGUN)
 					pChr->SetActiveWeapon(WEAPON_HAMMER);
 				break;
@@ -74,7 +70,6 @@ void CPickup::Tick()
 					pChr->SetWeaponGot(WEAPON_SHOTGUN, false);
 					pChr->SetWeaponAmmo(WEAPON_SHOTGUN, 0);
 					pChr->SetLastWeapon(WEAPON_GUN);
-					GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_ARMOR, pChr->GetCid());
 				}
 				if(pChr->GetActiveWeapon() == WEAPON_SHOTGUN)
 					pChr->SetActiveWeapon(WEAPON_HAMMER);
@@ -90,7 +85,6 @@ void CPickup::Tick()
 					pChr->SetWeaponGot(WEAPON_GRENADE, false);
 					pChr->SetWeaponAmmo(WEAPON_GRENADE, 0);
 					pChr->SetLastWeapon(WEAPON_GUN);
-					GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_ARMOR, pChr->GetCid());
 				}
 				if(pChr->GetActiveWeapon() == WEAPON_GRENADE)
 					pChr->SetActiveWeapon(WEAPON_HAMMER);
@@ -116,7 +110,6 @@ void CPickup::Tick()
 					pChr->SetWeaponGot(WEAPON_LASER, false);
 					pChr->SetWeaponAmmo(WEAPON_LASER, 0);
 					pChr->SetLastWeapon(WEAPON_GUN);
-					GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_ARMOR, pChr->GetCid());
 				}
 				if(pChr->GetActiveWeapon() == WEAPON_LASER)
 					pChr->SetActiveWeapon(WEAPON_HAMMER);
@@ -124,19 +117,7 @@ void CPickup::Tick()
 
 			case POWERUP_WEAPON:
 				if(m_Subtype >= 0 && m_Subtype < NUM_WEAPONS && (!pChr->GetWeaponGot(m_Subtype) || pChr->GetWeaponAmmo(m_Subtype) != -1))
-				{
 					pChr->GiveWeapon(m_Subtype);
-
-					if(GameWorld()->m_WorldConfig.m_IsDDRace && GameWorld()->m_WorldConfig.m_PredictDDRace)
-					{
-						if(m_Subtype == WEAPON_GRENADE)
-							GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_GRENADE, pChr->GetCid());
-						else if(m_Subtype == WEAPON_SHOTGUN)
-							GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_SHOTGUN, pChr->GetCid());
-						else if(m_Subtype == WEAPON_LASER)
-							GameWorld()->CreatePredictedSound(m_Pos, SOUND_PICKUP_SHOTGUN, pChr->GetCid());
-					}
-				}
 				break;
 
 			case POWERUP_NINJA:
@@ -166,7 +147,7 @@ void CPickup::Move()
 }
 
 CPickup::CPickup(CGameWorld *pGameWorld, int Id, const CPickupData *pPickup) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), PICKUP_PHYSICS_RADIUS)
+	CEntity(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), gs_PickupPhysSize)
 {
 	m_Pos = pPickup->m_Pos;
 	m_Type = pPickup->m_Type;

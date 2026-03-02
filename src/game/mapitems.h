@@ -205,6 +205,20 @@ enum
 	TILE_CREDITS_8 = 159,
 	TILE_ENTITIES_OFF_1 = 190,
 	TILE_ENTITIES_OFF_2 = 191,
+
+        TILE_BLOCK_ENABLE = 160,
+        TILE_BLOCK_DISABLE = 161,
+        TILE_GREEN_ZONE_ENABLE = 176,
+        TILE_GREEN_ZONE_DISABLE = 177,
+        TILE_LVL5_ZONE = 148,
+        TILE_LVL10_ZONE = 149,
+        TILE_LVL25_ZONE = 150,
+        TILE_LVL50_ZONE = 151,
+        TILE_LVL100_ZONE = 152,
+        TILE_FARM_ZONE_X1 = 163,
+        TILE_FARM_ZONE_X2 = 164,
+        TILE_FARM_ZONE_X3 = 165
+
 	// End of higher tiles
 };
 

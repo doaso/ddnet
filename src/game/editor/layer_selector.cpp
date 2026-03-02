@@ -27,8 +27,8 @@ bool CLayerSelector::SelectByTile()
 	bool IsFound = false;
 	for(const auto &HoverTile : Editor()->HoverTiles())
 	{
-		if(!Map()->m_vpGroups[HoverTile.m_Group]->m_Visible ||
-			!Map()->m_vpGroups[HoverTile.m_Group]->m_vpLayers[HoverTile.m_Layer]->m_Visible)
+		if(!Editor()->Map()->m_vpGroups[HoverTile.m_Group]->m_Visible ||
+			!Editor()->Map()->m_vpGroups[HoverTile.m_Group]->m_vpLayers[HoverTile.m_Layer]->m_Visible)
 			continue;
 
 		if(MatchedGroup == -1)
@@ -49,7 +49,7 @@ bool CLayerSelector::SelectByTile()
 	{
 		if(!IsFound)
 			m_SelectionOffset = 1;
-		Map()->SelectLayer(MatchedLayer, MatchedGroup);
+		Editor()->SelectLayer(MatchedLayer, MatchedGroup);
 		return true;
 	}
 	return false;

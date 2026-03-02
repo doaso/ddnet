@@ -209,20 +209,20 @@ void CNetBan::MakeBanInfo(const CBan<T> *pBan, char *pBuf, unsigned BuffSize, in
 	// build type based part
 	char aBuf[256];
 	if(Type == MSGTYPE_PLAYER)
-		str_copy(aBuf, "You have been banned");
+		str_copy(aBuf, "Вы были заблокированы");
 	else
 	{
 		char aTemp[256];
 		switch(Type)
 		{
 		case MSGTYPE_LIST:
-			str_format(aBuf, sizeof(aBuf), "%s banned", NetToString(&pBan->m_Data, aTemp, sizeof(aTemp)));
+			str_format(aBuf, sizeof(aBuf), "%s заблокирован", NetToString(&pBan->m_Data, aTemp, sizeof(aTemp)));
 			break;
 		case MSGTYPE_BANADD:
-			str_format(aBuf, sizeof(aBuf), "banned %s", NetToString(&pBan->m_Data, aTemp, sizeof(aTemp)));
+			str_format(aBuf, sizeof(aBuf), "заблокирован %s", NetToString(&pBan->m_Data, aTemp, sizeof(aTemp)));
 			break;
 		case MSGTYPE_BANREM:
-			str_format(aBuf, sizeof(aBuf), "unbanned %s", NetToString(&pBan->m_Data, aTemp, sizeof(aTemp)));
+			str_format(aBuf, sizeof(aBuf), "разблокирован %s", NetToString(&pBan->m_Data, aTemp, sizeof(aTemp)));
 			break;
 		default:
 			aBuf[0] = 0;
@@ -234,9 +234,9 @@ void CNetBan::MakeBanInfo(const CBan<T> *pBan, char *pBuf, unsigned BuffSize, in
 	{
 		int Mins = ((pBan->m_Info.m_Expires - time_timestamp()) + 59) / 60;
 		if(Mins <= 1)
-			str_format(pBuf, BuffSize, "%s for 1 minute (%s)", aBuf, pBan->m_Info.m_aReason);
+			str_format(pBuf, BuffSize, "%s на 1 минуту Причина: %s", aBuf, pBan->m_Info.m_aReason);
 		else
-			str_format(pBuf, BuffSize, "%s for %d minutes (%s)", aBuf, Mins, pBan->m_Info.m_aReason);
+			str_format(pBuf, BuffSize, "%s на %d минут(ы) Причина: %s", aBuf, Mins, pBan->m_Info.m_aReason);
 	}
 	else
 		str_format(pBuf, BuffSize, "%s (%s)", aBuf, pBan->m_Info.m_aReason);

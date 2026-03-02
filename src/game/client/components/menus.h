@@ -3,7 +3,6 @@
 #ifndef GAME_CLIENT_COMPONENTS_MENUS_H
 #define GAME_CLIENT_COMPONENTS_MENUS_H
 
-#include <base/bytes.h>
 #include <base/types.h>
 #include <base/vmath.h>
 
@@ -146,31 +145,7 @@ protected:
 
 	bool m_DummyNamePlatePreview = false;
 
-	class CJoinTutorial
-	{
-	public:
-		bool m_Queued = false;
-		enum class EStatus
-		{
-			REFRESHING,
-			SERVER_LIST_ERROR,
-			NO_TUTORIAL_AVAILABLE,
-		};
-		EStatus m_Status = EStatus::REFRESHING;
-		bool m_TryRefresh = false;
-		bool m_TriedRefresh = false;
-		enum class ELocalServerState
-		{
-			NOT_TRIED,
-			TRY,
-			WAITING_STOP,
-			WAITING_START,
-		};
-		ELocalServerState m_LocalServerState = ELocalServerState::NOT_TRIED;
-		std::chrono::nanoseconds m_StateChange = std::chrono::nanoseconds(0);
-	};
-	CJoinTutorial m_JoinTutorial;
-
+	bool m_JoinTutorial = false;
 	bool m_CreateDefaultFavoriteCommunities = false;
 	bool m_ForceRefreshLanPage = false;
 
@@ -477,8 +452,6 @@ protected:
 
 	// found in menus_demo.cpp
 	vec2 m_DemoControlsPositionOffset = vec2(0.0f, 0.0f);
-	bool m_PausedBeforeSeeking;
-	float m_PrevSeekAmount;
 	float m_LastPauseChange = -1.0f;
 	float m_LastSpeedChange = -1.0f;
 	static constexpr int DEFAULT_SKIP_DURATION_INDEX = 3;
@@ -582,6 +555,7 @@ protected:
 	void RenderSettingsSound(CUIRect MainView);
 	void RenderSettings(CUIRect MainView);
 	void RenderSettingsCustom(CUIRect MainView);
+	void RenderSettingsDLC(CUIRect MainView);
 
 	// found in menus_settings_controls.cpp
 	// TODO: Change PopupConfirm to avoid using a function pointer to a CMenus
@@ -686,6 +660,7 @@ public:
 		SETTINGS_SOUND,
 		SETTINGS_DDNET,
 		SETTINGS_ASSETS,
+		SETTINGS_DLC,
 
 		SETTINGS_LENGTH,
 	};
@@ -790,7 +765,6 @@ public:
 		POPUP_MESSAGE, // generic message popup (one button)
 		POPUP_CONFIRM, // generic confirmation popup (two buttons)
 		POPUP_FIRST_LAUNCH,
-		POPUP_JOIN_TUTORIAL,
 		POPUP_POINTS,
 		POPUP_DISCONNECTED,
 		POPUP_LANGUAGE,
@@ -816,7 +790,6 @@ public:
 	void ForceRefreshLanPage();
 	void SetShowStart(bool ShowStart);
 	void ShowQuitPopup();
-	void JoinTutorial();
 
 private:
 	CCommunityIcons m_CommunityIcons;

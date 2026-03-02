@@ -341,71 +341,58 @@ bool CLayerTele::ContainsElementWithId(int Id, bool Checkpoint) const
 
 void CLayerTele::GetPos(int Number, int Offset, int &TeleX, int &TeleY)
 {
+	int Match = -1;
+	ivec2 MatchPos = ivec2(-1, -1);
 	TeleX = -1;
 	TeleY = -1;
 
-	auto IsMatchingTile = [&](int i) {
-		if(m_pTeleTile[i].m_Number == 0 || m_pTeleTile[i].m_Number != Number)
-			return false;
-		return IsValidTeleTile(m_pTeleTile[i].m_Type) && IsTeleTileNumberUsedAny(m_pTeleTile[i].m_Type);
-	};
-
-	const float MinClusterDistance = 10.0f;
-
-	int Match = -1;
-	ivec2 MatchPos = ivec2(-1, -1);
-
-	auto FindTile = [&]() {
-		for(int y = 0; y < m_Height; y++)
+	auto FindTile = [this, &Match, &MatchPos, &Number, &Offset]() {
+		for(int x = 0; x < m_Width; x++)
 		{
-			for(int x = 0; x < m_Width; x++)
+			for(int y = 0; y < m_Height; y++)
 			{
-				if(!IsMatchingTile(y * m_Width + x))
+				int i = y * m_Width + x;
+				if(!IsTeleTileNumberUsedAny(m_pTeleTile[i].m_Type))
 					continue;
-				Match++;
-				if(Offset != -1)
+				int Tele = m_pTeleTile[i].m_Number;
+				if(Number == Tele)
 				{
-					if(Match == Offset)
+					Match++;
+					if(Offset != -1)
 					{
-						MatchPos = ivec2(x, y);
-						m_GotoTeleOffset = Match;
-						return;
+						if(Match == Offset)
+						{
+							MatchPos = ivec2(x, y);
+							m_GotoTeleOffset = Match;
+							return;
+						}
+						continue;
 					}
-					continue;
-				}
-				if(Match <= m_GotoTeleOffset)
-					continue;
-				bool FarEnough = m_GotoTeleLastPos == ivec2(-1, -1) || distance(vec2(m_GotoTeleLastPos.x, m_GotoTeleLastPos.y), vec2(x, y)) >= MinClusterDistance;
-				if(FarEnough)
-				{
 					MatchPos = ivec2(x, y);
-					m_GotoTeleOffset = Match;
-					return;
+					if(m_GotoTeleLastPos != ivec2(-1, -1))
+					{
+						if(distance(m_GotoTeleLastPos, MatchPos) < 10.0f)
+						{
+							m_GotoTeleOffset++;
+							continue;
+						}
+					}
+					m_GotoTeleLastPos = MatchPos;
+					if(Match == m_GotoTeleOffset)
+						return;
 				}
 			}
 		}
 	};
 	FindTile();
-	// Wrap around when no further distinct location found
-	if(MatchPos == ivec2(-1, -1) && Offset == -1 && Match != -1)
-	{
-		m_GotoTeleOffset = -1;
-		m_GotoTeleLastPos = ivec2(-1, -1);
-		Match = -1;
-		FindTile();
-	}
 
-	if(MatchPos != ivec2(-1, -1))
-	{
-		TeleX = MatchPos.x;
-		TeleY = MatchPos.y;
-		m_GotoTeleLastPos = MatchPos;
-	}
-	else
-	{
-		m_GotoTeleLastPos = ivec2(-1, -1);
-		m_GotoTeleOffset = 0;
-	}
+	if(MatchPos == ivec2(-1, -1))
+		return;
+	if(Match < m_GotoTeleOffset)
+		m_GotoTeleOffset = -1;
+	TeleX = MatchPos.x;
+	TeleY = MatchPos.y;
+	m_GotoTeleOffset++;
 }
 
 std::shared_ptr<CLayer> CLayerTele::Duplicate() const

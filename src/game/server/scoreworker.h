@@ -1,8 +1,6 @@
 #ifndef GAME_SERVER_SCOREWORKER_H
 #define GAME_SERVER_SCOREWORKER_H
 
-#include <base/str.h>
-
 #include <engine/map.h>
 #include <engine/server/databases/connection_pool.h>
 #include <engine/shared/protocol.h>
@@ -54,6 +52,13 @@ struct CScorePlayerResult : ISqlResult
 			float m_aTimeCp[NUM_CHECKPOINTS];
 			int m_Birthday; // 0 indicates no birthday
 			char m_aRequestedPlayer[MAX_NAME_LENGTH];
+                        bool m_IsRegistered;
+                        char m_aPassword[128];
+                        std::uint8_t m_AdminLevel; 
+                        std::uint32_t m_Level;
+                        std::uint32_t m_XP;
+                        std::uint32_t m_Points;
+                        std::uint32_t m_DonateRubles;
 		} m_Info = {};
 		struct
 		{
@@ -64,6 +69,22 @@ struct CScorePlayerResult : ISqlResult
 	} m_Data = {}; // PLAYER_INFO
 
 	void SetVariant(Variant v);
+};
+
+struct CSqlUserRequest : ISqlData
+{
+        CSqlUserRequest(std::shared_ptr<CScorePlayerResult> pResult) :
+            ISqlData(std::move(pResult))
+            {
+            }
+
+            char m_aLogin[MAX_NAME_LENGTH];
+            char m_aPassword[128];
+            std::uint8_t m_AdminLevel;
+            std::uint32_t m_Level;
+            std::uint32_t m_XP;
+            std::uint32_t m_Points;
+            std::uint32_t m_DonateRubles;
 };
 
 struct CScoreLoadBestTimeResult : ISqlResult
@@ -291,6 +312,14 @@ struct CTeamrank
 
 struct CScoreWorker
 {
+        static bool Register(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangePassword(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangeAdminLevel(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangeLevel(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangeXP(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangePoints(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+        static bool ChangeDonateRubles(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
+
 	static bool LoadBestTime(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);
 
 	static bool RandomMap(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize);

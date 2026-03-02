@@ -9,14 +9,6 @@
 #define DEFAULT_BTN []() -> int { return -1; }
 
 REGISTER_QUICK_ACTION(
-	ShowHelp,
-	"Show help",
-	[&]() { ShowHelp(); },
-	ALWAYS_FALSE,
-	ALWAYS_FALSE,
-	DEFAULT_BTN,
-	"[F1] Open the DDNet Wiki page for the map editor in a web browser.")
-REGISTER_QUICK_ACTION(
 	ToggleGrid,
 	"Toggle grid",
 	[&]() { MapView()->MapGrid()->Toggle(); },
@@ -182,7 +174,7 @@ REGISTER_QUICK_ACTION(
 	AddSwitchLayer,
 	"Add switch layer",
 	[&]() { AddSwitchLayer(); },
-	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pSwitchLayer; },
+	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || Map()->m_pSwitchLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new switch layer.")
@@ -190,7 +182,7 @@ REGISTER_QUICK_ACTION(
 	AddTuneLayer,
 	"Add tune layer",
 	[&]() { AddTuneLayer(); },
-	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pTuneLayer; },
+	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || Map()->m_pTuneLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new tuning layer.")
@@ -198,7 +190,7 @@ REGISTER_QUICK_ACTION(
 	AddSpeedupLayer,
 	"Add speedup layer",
 	[&]() { AddSpeedupLayer(); },
-	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pSpeedupLayer; },
+	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || Map()->m_pSpeedupLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new speedup layer.")
@@ -206,7 +198,7 @@ REGISTER_QUICK_ACTION(
 	AddTeleLayer,
 	"Add tele layer",
 	[&]() { AddTeleLayer(); },
-	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pTeleLayer; },
+	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || Map()->m_pTeleLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new tele layer.")
@@ -214,7 +206,7 @@ REGISTER_QUICK_ACTION(
 	AddFrontLayer,
 	"Add front layer",
 	[&]() { AddFrontLayer(); },
-	[&]() -> bool { return !Map()->SelectedGroup()->m_GameGroup || Map()->m_pFrontLayer; },
+	[&]() -> bool { return !GetSelectedGroup()->m_GameGroup || Map()->m_pFrontLayer; },
 	ALWAYS_FALSE,
 	DEFAULT_BTN,
 	"Create a new item layer.")
@@ -341,7 +333,7 @@ REGISTER_QUICK_ACTION(
 	"Delete layer",
 	[&]() { DeleteSelectedLayer(); },
 	[&]() -> bool {
-		std::shared_ptr<CLayer> pCurrentLayer = Map()->SelectedLayer(0);
+		std::shared_ptr<CLayer> pCurrentLayer = GetSelectedLayer(0);
 		if(!pCurrentLayer)
 			return true;
 		return Map()->m_pGameLayer == pCurrentLayer;
@@ -370,7 +362,7 @@ REGISTER_QUICK_ACTION(
 	"Add quad",
 	[&]() { AddQuadOrSound(); },
 	[&]() -> bool {
-		std::shared_ptr<CLayer> pLayer = Map()->SelectedLayer(0);
+		std::shared_ptr<CLayer> pLayer = GetSelectedLayer(0);
 		if(!pLayer)
 			return false;
 		return pLayer->m_Type != LAYERTYPE_QUADS;
@@ -383,7 +375,7 @@ REGISTER_QUICK_ACTION(
 	"Add sound source",
 	[&]() { AddQuadOrSound(); },
 	[&]() -> bool {
-		std::shared_ptr<CLayer> pLayer = Map()->SelectedLayer(0);
+		std::shared_ptr<CLayer> pLayer = GetSelectedLayer(0);
 		if(!pLayer)
 			return false;
 		return pLayer->m_Type != LAYERTYPE_SOUNDS;

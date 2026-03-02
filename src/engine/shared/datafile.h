@@ -31,8 +31,7 @@ public:
 	~CDataFileReader();
 	CDataFileReader &operator=(CDataFileReader &&Other);
 
-	[[nodiscard]] bool Open(const char *pFullName, IStorage *pStorage, const char *pPath, int StorageType);
-	[[nodiscard]] bool Open(IStorage *pStorage, const char *pPath, int StorageType);
+	[[nodiscard]] bool Open(class IStorage *pStorage, const char *pFilename, int StorageType);
 	void Close();
 	bool IsOpen() const;
 	IOHANDLE File() const;
@@ -52,12 +51,9 @@ public:
 	void *FindItem(int Type, int Id);
 	int NumItems() const;
 
-	const char *FullName() const;
-	const char *BaseName() const;
-	const char *Path() const;
 	SHA256_DIGEST Sha256() const;
 	unsigned Crc() const;
-	int Size() const;
+	int MapSize() const;
 };
 
 // write access

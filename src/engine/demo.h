@@ -11,7 +11,6 @@
 #include <engine/shared/uuid_manager.h>
 
 #include <cstdint>
-#include <optional>
 
 enum
 {
@@ -55,7 +54,7 @@ struct CTimelineMarkers
 struct CMapInfo
 {
 	char m_aName[MAX_MAP_LENGTH];
-	std::optional<SHA256_DIGEST> m_Sha256;
+	SHA256_DIGEST m_Sha256;
 	unsigned m_Crc;
 	unsigned m_Size;
 };

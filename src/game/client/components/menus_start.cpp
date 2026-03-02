@@ -3,7 +3,6 @@
 #include "menus_start.h"
 
 #include <engine/client/updater.h>
-#include <engine/font_icons.h>
 #include <engine/graphics.h>
 #include <engine/keys.h>
 #include <engine/serverbrowser.h>
@@ -20,6 +19,8 @@
 #if defined(CONF_PLATFORM_ANDROID)
 #include <android/android_main.h>
 #endif
+
+using namespace FontIcons;
 
 void CMenusStart::RenderStartMenu(CUIRect MainView)
 {
@@ -61,9 +62,30 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
 	ExtMenu.HSplitBottom(20.0f, &ExtMenu, &Button);
 	static CButtonContainer s_TutorialButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_TutorialButton, Localize("Tutorial"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	static float s_JoinTutorialTime = 0.0f;
+	if(GameClient()->m_Menus.DoButton_Menu(&s_TutorialButton, Localize("Tutorial"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)) ||
+		(s_JoinTutorialTime != 0.0f && Client()->LocalTime() >= s_JoinTutorialTime))
 	{
-		GameClient()->m_Menus.JoinTutorial();
+		// Activate internet tab before joining tutorial to make sure the server info
+		// for the tutorial servers is available.
+		GameClient()->m_Menus.SetMenuPage(CMenus::PAGE_INTERNET);
+		GameClient()->m_Menus.RefreshBrowserTab(true);
+		const char *pAddr = ServerBrowser()->GetTutorialServer();
+		if(pAddr)
+		{
+			Client()->Connect(pAddr);
+			s_JoinTutorialTime = 0.0f;
+		}
+		else if(s_JoinTutorialTime == 0.0f)
+		{
+			dbg_msg("menus", "couldn't find tutorial server, retrying in 5 seconds");
+			s_JoinTutorialTime = Client()->LocalTime() + 5.0f;
+		}
+		else
+		{
+			Client()->AddWarning(SWarning(Localize("Can't find a Tutorial server")));
+			s_JoinTutorialTime = 0.0f;
+		}
 	}
 
 	ExtMenu.HSplitBottom(5.0f, &ExtMenu, nullptr); // little space
@@ -159,7 +181,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	static CButtonContainer s_ConsoleButton;
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
-	if(GameClient()->m_Menus.DoButton_Menu(&s_ConsoleButton, FontIcon::TERMINAL, 0, &ConsoleButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.1f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_ConsoleButton, FONT_ICON_TERMINAL, 0, &ConsoleButton, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.1f)))
 	{
 		GameClient()->m_GameConsole.Toggle(CGameConsole::CONSOLETYPE_LOCAL);
 	}

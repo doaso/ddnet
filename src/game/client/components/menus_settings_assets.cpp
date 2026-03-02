@@ -2,7 +2,6 @@
 
 #include <base/system.h>
 
-#include <engine/font_icons.h>
 #include <engine/shared/config.h>
 #include <engine/storage.h>
 #include <engine/textrender.h>
@@ -13,6 +12,7 @@
 
 #include <chrono>
 
+using namespace FontIcons;
 using namespace std::chrono_literals;
 
 typedef std::function<void()> TMenuAssetScanLoadedFunc;
@@ -242,7 +242,8 @@ static const CMenus::SCustomItem *GetCustomItem(int CurTab, size_t Index)
 		return gs_vpSearchHudList[Index];
 	else if(CurTab == ASSETS_TAB_EXTRAS)
 		return gs_vpSearchExtrasList[Index];
-	dbg_assert_failed("Invalid CurTab: %d", CurTab);
+
+	return nullptr;
 }
 
 template<typename TName>
@@ -305,10 +306,6 @@ void CMenus::ClearCustomItems(int CurTab)
 
 		// reload current DDNet particles skin
 		GameClient()->LoadExtrasSkin(g_Config.m_ClAssetExtras);
-	}
-	else
-	{
-		dbg_assert_failed("Invalid CurTab: %d", CurTab);
 	}
 	gs_aInitCustomList[CurTab] = true;
 }
@@ -417,10 +414,6 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 	else if(s_CurCustomTab == ASSETS_TAB_EXTRAS)
 	{
 		InitAssetList(m_vExtrasList, "assets/extras", "extras", ExtrasScan, Graphics(), Storage(), &User);
-	}
-	else
-	{
-		dbg_assert_failed("Invalid s_CurCustomTab: %d", s_CurCustomTab);
 	}
 
 	MainView.HSplitTop(10.0f, nullptr, &MainView);
@@ -642,12 +635,44 @@ void CMenus::RenderSettingsCustom(CUIRect MainView)
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
 	static CButtonContainer s_AssetsReloadBtnId;
-	if(DoButton_Menu(&s_AssetsReloadBtnId, FontIcon::ARROW_ROTATE_RIGHT, 0, &ReloadButton) || Input()->KeyPress(KEY_F5) || (Input()->KeyPress(KEY_R) && Input()->ModifierIsPressed()))
+	if(DoButton_Menu(&s_AssetsReloadBtnId, FONT_ICON_ARROW_ROTATE_RIGHT, 0, &ReloadButton) || Input()->KeyPress(KEY_F5) || (Input()->KeyPress(KEY_R) && Input()->ModifierIsPressed()))
 	{
 		ClearCustomItems(s_CurCustomTab);
 	}
 	TextRender()->SetRenderFlags(0);
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+}
+
+void CMenus::RenderSettingsDLC(CUIRect MainView)
+{
+	CUIRect Label, Button, Left, Game = MainView;
+        Game.HSplitTop(30.0f, &Label, &Game);
+        Ui()->DoLabel(&Label, Localize("Chat Steller"), 20.0f, TEXTALIGN_ML);
+        Game.HSplitTop(5.0f, nullptr, &Game);
+        Game.VSplitMid(&Left, nullptr, 20.0f);
+
+        const bool IsChatSteller = g_Config.m_ClChatSteller;
+        Left.HSplitTop(20.0f, &Button, &Left);
+        if(DoButton_CheckBox(&g_Config.m_ClChatSteller, "Chat Steller", IsChatSteller, &Button))
+                g_Config.m_ClChatSteller = !IsChatSteller;
+
+        if (IsChatSteller)
+        {
+                const bool IsChatNameSteller = g_Config.m_ClChatNameSteller;
+                Left.HSplitTop(20.0f, &Button, &Left);
+                if(DoButton_CheckBox(&g_Config.m_ClChatNameSteller, "Name Steller", IsChatNameSteller, &Button))
+                        g_Config.m_ClChatNameSteller = !IsChatNameSteller; 
+                
+                const bool IsChatSkinSteller = g_Config.m_ClChatSkinSteller;
+                Left.HSplitTop(20.0f, &Button, &Left);
+                if(DoButton_CheckBox(&g_Config.m_ClChatSkinSteller, "Skin Steller", IsChatSkinSteller, &Button))
+                        g_Config.m_ClChatSkinSteller = !IsChatSkinSteller; 
+        }
+
+        const bool IsChatAD = g_Config.m_ClChatAD;
+        Left.HSplitTop(20.0f, &Button, &Left);
+        if(DoButton_CheckBox(&g_Config.m_ClChatAD, "Chat AD", IsChatAD, &Button))
+                g_Config.m_ClChatAD = !IsChatAD;
 }
 
 void CMenus::ConchainAssetsEntities(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData)

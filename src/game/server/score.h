@@ -43,8 +43,15 @@ public:
 
 	CPlayerData *PlayerData(int Id) { return &m_aPlayerData[Id]; }
 
+        void Register(const char *pNickname, const char *pPassword);
+        void ChangePassword(const char *pNickname, const char *pPassword);
+        void ChangeAdminLevel(const char *pNickname, std::uint8_t AdminLevel);
+        void ChangeLevel(const char *pNickname, std::uint32_t Level);
+        void ChangeXP(const char *pNickname, std::uint32_t XP);
+        void ChangePoints(const char *pNickname, std::uint32_t Points);
+        void ChangeDonateRubles(const char *pNickname, std::uint32_t DonateRubles);
+
 	void LoadBestTime();
-	void LoadMapInfo();
 	void MapInfo(int ClientId, const char *pMapName);
 	void MapVote(int ClientId, const char *pMapName);
 	void LoadPlayerData(int ClientId, const char *pName = "");

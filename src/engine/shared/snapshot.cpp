@@ -5,11 +5,8 @@
 #include "compression.h"
 #include "uuid_manager.h"
 
-#include <base/bytes.h>
-#include <base/dbg.h>
 #include <base/math.h>
-#include <base/mem.h>
-#include <base/str.h>
+#include <base/system.h>
 
 #include <generated/protocol7.h>
 #include <generated/protocolglue.h>
@@ -720,13 +717,15 @@ int CSnapshotStorage::Get(int Tick, int64_t *pTagtime, const CSnapshot **ppData,
 }
 
 // CSnapshotBuilder
+CSnapshotBuilder::CSnapshotBuilder()
+{
+	m_NumExtendedItemTypes = 0;
+}
+
 void CSnapshotBuilder::Init(bool Sixup)
 {
-	dbg_assert(!m_Building, "Snapshot builder is already building snapshot. Call `Finish` for each call to `Init`.");
-
 	m_DataSize = 0;
 	m_NumItems = 0;
-	m_Building = true;
 	m_Sixup = Sixup;
 
 	for(int i = 0; i < m_NumExtendedItemTypes; i++)
@@ -755,9 +754,6 @@ int *CSnapshotBuilder::GetItemData(int Key)
 
 int CSnapshotBuilder::Finish(void *pSnapData)
 {
-	dbg_assert(m_Building, "Snapshot builder is not building snapshot. Call `Finish` after `Init`.");
-	m_Building = false;
-
 	// flatten and make the snapshot
 	dbg_assert(m_NumItems <= CSnapshot::MAX_ITEMS, "Too many snap items");
 	CSnapshot *pSnap = (CSnapshot *)pSnapData;
@@ -777,9 +773,7 @@ int CSnapshotBuilder::GetTypeFromIndex(int Index) const
 
 bool CSnapshotBuilder::AddExtendedItemType(int Index)
 {
-	dbg_assert(m_Building, "Snapshot builder is not building snapshot. Call `AddExtendedItemType` between `Init` and `Finish`.");
-	dbg_assert(0 <= Index && Index < m_NumExtendedItemTypes, "Index out of range: %d", Index);
-
+	dbg_assert(0 <= Index && Index < m_NumExtendedItemTypes, "index out of range");
 	int *pUuidItem = static_cast<int *>(NewItem(0, GetTypeFromIndex(Index), sizeof(CUuid))); // NETOBJTYPE_EX
 	if(pUuidItem == nullptr)
 	{
@@ -818,11 +812,10 @@ int CSnapshotBuilder::GetExtendedItemTypeIndex(int TypeId)
 
 void *CSnapshotBuilder::NewItem(int Type, int Id, int Size)
 {
-	dbg_assert(m_Building, "Snapshot builder is not building snapshot. Call `NewItem` between `Init` and `Finish`.");
-	const bool Extended = Type >= OFFSET_UUID;
-	dbg_assert((Type >= 0 && Type <= CSnapshot::MAX_TYPE) || Extended || (m_Sixup && Type >= -CSnapshot::MAX_TYPE && Type < 0), "Invalid snap item Type: %d", Type);
-	dbg_assert(Id >= 0 && Id <= CSnapshot::MAX_ID, "Invalid snap item Id: %d", Id);
-	dbg_assert(Size >= 0 && (size_t)Size <= CSnapshot::MAX_SIZE - sizeof(CSnapshot) - sizeof(CSnapshotItem) - sizeof(int), "Invalid snap item Size: %d", Size);
+	if(Id == -1)
+	{
+		return nullptr;
+	}
 
 	if(m_NumItems >= CSnapshot::MAX_ITEMS)
 	{
@@ -836,6 +829,7 @@ void *CSnapshotBuilder::NewItem(int Type, int Id, int Size)
 		return nullptr;
 	}
 
+	const bool Extended = Type >= OFFSET_UUID;
 	if(Extended)
 	{
 		const int ExtendedItemTypeIndex = GetExtendedItemTypeIndex(Type);

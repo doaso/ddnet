@@ -3,10 +3,8 @@
 
 #include "localization.h"
 
-#include <base/io.h>
 #include <base/log.h>
-#include <base/os.h>
-#include <base/str.h>
+#include <base/system.h>
 
 #include <engine/console.h>
 #include <engine/shared/linereader.h>

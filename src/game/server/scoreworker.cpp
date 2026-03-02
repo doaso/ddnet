@@ -142,6 +142,174 @@ bool CTeamrank::GetSqlTop5Team(IDbConnection *pSqlServer, bool *pEnd, char *pErr
 	return true;
 }
 
+bool CScoreWorker::Register(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"INSERT INTO %s_users (Login, Password, AdminLevel, Level, XP, Points, DonateRubles) VALUES (?, ?, 0, 1, 0, 0, 0)",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindString(1, pData->m_aLogin);
+	pSqlServer->BindString(2, pData->m_aPassword);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
+bool CScoreWorker::ChangePassword(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"UPDATE %s_users SET Password  = ? WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindString(1, pData->m_aPassword);
+	pSqlServer->BindString(2, pData->m_aLogin);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
+bool CScoreWorker::ChangeAdminLevel(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"UPDATE %s_users SET AdminLevel  = ? WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindInt(1, pData->m_AdminLevel);
+	pSqlServer->BindString(2, pData->m_aLogin);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
+bool CScoreWorker::ChangeLevel(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"UPDATE %s_users SET Level  = ? WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindInt(1, pData->m_Level);
+	pSqlServer->BindString(2, pData->m_aLogin);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
+bool CScoreWorker::ChangeXP(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"UPDATE %s_users SET XP  = ? WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindInt(1, pData->m_XP);
+	pSqlServer->BindString(2, pData->m_aLogin);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
+bool CScoreWorker::ChangePoints(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"UPDATE %s_users SET Points  = ? WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindInt(1, pData->m_Points);
+	pSqlServer->BindString(2, pData->m_aLogin);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
+bool CScoreWorker::ChangeDonateRubles(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
+{
+        const auto *pData = dynamic_cast<const CSqlUserRequest *>(pGameData);
+
+        char aBuf[512];
+	str_format(aBuf, sizeof(aBuf),
+		"UPDATE %s_users SET DonateRubles  = ? WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize))
+	{
+		return false;
+	}
+
+	pSqlServer->BindInt(1, pData->m_DonateRubles);
+	pSqlServer->BindString(2, pData->m_aLogin);
+        int NumInserted;
+        if(!pSqlServer->ExecuteUpdate(&NumInserted, pError, ErrorSize))
+        {
+                return false;
+        }
+
+        return true;
+}
+
 bool CScoreWorker::LoadBestTime(IDbConnection *pSqlServer, const ISqlData *pGameData, char *pError, int ErrorSize)
 {
 	const auto *pData = dynamic_cast<const CSqlLoadBestTimeRequest *>(pGameData);
@@ -250,6 +418,34 @@ bool CScoreWorker::LoadPlayerData(IDbConnection *pSqlServer, const ISqlData *pGa
 		if(sscanf(aCurrent, "%d-%d-%d", &CurrentYear, &CurrentMonth, &CurrentDay) == 3 && sscanf(aStamp, "%d-%d-%d", &StampYear, &StampMonth, &StampDay) == 3 && CurrentMonth == StampMonth && CurrentDay == StampDay)
 			pResult->m_Data.m_Info.m_Birthday = CurrentYear - StampYear;
 	}
+
+	str_format(aBuf, sizeof(aBuf),
+                "SELECT Password, AdminLevel, Level, XP, Points, DonateRubles "
+                "FROM %s_users "
+                "WHERE Login = ?",
+		pSqlServer->GetPrefix());
+	if(!pSqlServer->PrepareStatement(aBuf, pError, ErrorSize)) {
+                return false;
+        }
+	pSqlServer->BindString(1, pData->m_aRequestingPlayer);
+	if(!pSqlServer->Step(&End, pError, ErrorSize))
+	{
+		return false;
+	}
+	if(!End)
+        {
+                pResult->m_Data.m_Info.m_IsRegistered = true;
+                pSqlServer->GetString(1, pResult->m_Data.m_Info.m_aPassword, sizeof(pResult->m_Data.m_Info.m_aPassword));
+                pResult->m_Data.m_Info.m_AdminLevel = pSqlServer->GetInt(2); 
+                pResult->m_Data.m_Info.m_Level = pSqlServer->GetInt(3);
+                pResult->m_Data.m_Info.m_XP = pSqlServer->GetInt(4);
+                pResult->m_Data.m_Info.m_Points = pSqlServer->GetInt(5);
+                pResult->m_Data.m_Info.m_DonateRubles = pSqlServer->GetInt(6);
+                return true;
+        }
+
+        pResult->m_Data.m_Info.m_Level = 1;
+        pResult->m_Data.m_Info.m_IsRegistered = false;
 	return true;
 }
 

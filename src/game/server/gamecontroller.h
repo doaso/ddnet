@@ -107,6 +107,7 @@ public:
 			chr - The CCharacter that was spawned.
 	*/
 	virtual void OnCharacterSpawn(class CCharacter *pChr);
+        virtual void OnFlagReturn(class CFlag *pFlag);
 
 	virtual void HandleCharacterTiles(class CCharacter *pChr, int MapIndex);
 	virtual void SetArmorProgress(CCharacter *pCharacter, int Progress) {}
@@ -133,8 +134,6 @@ public:
 	// game
 	virtual void DoWarmup(int Seconds);
 
-	void SetGamePaused(bool Paused);
-	bool IsGamePaused() const;
 	void StartRound();
 	void EndRound();
 	void ChangeMap(const char *pToMap);
@@ -189,15 +188,6 @@ public:
 	 * @return The time split into seconds and the milliseconds remainder, use CFinishTime::Unset if you want the server to prefer scores.
 	 */
 	virtual CFinishTime SnapPlayerTime(int SnappingClient, CPlayer *pPlayer) { return CFinishTime::Unset(); }
-
-	/**
-	 * Snaps the current server record / best time of the current map.
-	 *
-	 * @param SnappingClient Client ID of the player that will receive the snapshot.
-	 *
-	 * @return The the map best time split into seconds and the milliseconds remainder, use CFinishTime::Unset if you want the server to prefer scores.
-	 */
-	virtual CFinishTime SnapMapBestTime(int SnappingClient) { return CFinishTime::Unset(); }
 
 	// spawn
 	virtual bool CanSpawn(int Team, vec2 *pOutPos, int ClientId);

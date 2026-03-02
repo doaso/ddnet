@@ -56,6 +56,7 @@ public:
 	void SetJumps(int Jumps);
 	void SetSolo(bool Solo);
 	void SetSuper(bool Super);
+        void SetBlock(bool Block);
 	void SetInvincible(bool Invincible);
 	void SetCollisionDisabled(bool CollisionDisabled);
 	void SetHookHitDisabled(bool HookHitDisabled);
@@ -196,7 +197,7 @@ public:
 	void Pause(bool Pause);
 	bool Freeze(int Seconds);
 	bool Freeze();
-	bool Unfreeze();
+	bool UnFreeze();
 	void GiveAllWeapons();
 	void ResetPickups();
 	void ResetJumps();

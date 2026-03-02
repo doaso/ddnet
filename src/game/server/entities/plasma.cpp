@@ -71,7 +71,7 @@ bool CPlasma::HitCharacter(CCharacter *pTarget)
 		return false;
 	}
 
-	m_Freeze ? pHitPlayer->Freeze() : pHitPlayer->Unfreeze();
+	m_Freeze ? pHitPlayer->Freeze() : pHitPlayer->UnFreeze();
 	if(m_Explosive)
 	{
 		// Plasma Turrets are very precise weapons only one tee gets speed from it,

@@ -75,6 +75,10 @@ public:
 		IConfigManager *pConfigManager = CreateConfigManager();
 		m_pKernel->RegisterInterface(pConfigManager);
 
+		IEngineMap *pEngineMap = CreateEngineMap();
+		m_pKernel->RegisterInterface(pEngineMap);
+		m_pKernel->RegisterInterface(static_cast<IMap *>(pEngineMap), false);
+
 		IEngineAntibot *pEngineAntibot = CreateEngineAntibot();
 		m_pKernel->RegisterInterface(pEngineAntibot);
 		m_pKernel->RegisterInterface(static_cast<IAntibot *>(pEngineAntibot), false);
@@ -130,6 +134,7 @@ public:
 		m_pServer->m_Econ.Shutdown();
 		m_pServer->m_Fifo.Shutdown();
 		m_pGameServer->OnShutdown(nullptr);
+		m_pServer->m_pMap->Unload();
 		m_pServer->DbPool()->OnShutdown();
 	}
 };
@@ -290,7 +295,7 @@ TEST_F(CTestGameWorld, CharacterEmote)
 
 	// ninja jetpack
 	pPlayer->Pause(CPlayer::PAUSE_NONE, true);
-	pChr->Unfreeze();
+	pChr->UnFreeze();
 	pPlayer->m_NinjaJetpack = true;
 	pChr->m_NinjaJetpack = true;
 	pChr->SetJetpack(true);
