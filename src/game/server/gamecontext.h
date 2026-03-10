@@ -451,6 +451,8 @@ private:
 	static void ConReshka(IConsole::IResult *pResult, void *pUserData);
 	static void ConYes(IConsole::IResult *pResult, void *pUserData);
 	static void ConNo(IConsole::IResult *pResult, void *pUserData);
+	static void ConCLB(IConsole::IResult *pResult, void *pUserData);
+	static void ConMLT(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConEffect(IConsole::IResult *pResult, void *pUserData);
 	static void ConGiveGun(IConsole::IResult *pResult, void *pUserData);

@@ -37,6 +37,8 @@ void CGameContext::ConCmdList(IConsole::IResult *pResult, void *pUserData)
                 "/orel - Предложить сыграть в Орел и Решка, игра за сторону Орел\n"
                 "/reshka - Предложить сыграть в Орел и Решка, игра за сторону Решка\n"
                 "/donate - Донат\n"
+                "/clb - тп на клб\n"
+                "/mlt - тп на мульту"
                 , pResult->m_ClientId);
 }
 
@@ -993,6 +995,42 @@ void CGameContext::ConNo(IConsole::IResult *pResult, void *pUserData)
         }
 
         pSelf->SendChatTarget(pResult->m_ClientId, "У вас нету активных заявок");
+}
+
+void CGameContext::ConCLB(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+    CCharacter *pChr = pPlayer->GetCharacter();
+    if(!pChr)
+        return;
+
+    pChr->SetBlock(true);
+    pChr->SetPosition(vec2(56.3f * 32.0f, 116.3f * 32.0f));
+}
+
+void CGameContext::ConMLT(IConsole::IResult *pResult, void *pUserData)
+{
+	CGameContext *pSelf = (CGameContext *)pUserData;
+	if(!CheckClientId(pResult->m_ClientId))
+		return;
+
+	CPlayer *pPlayer = pSelf->m_apPlayers[pResult->m_ClientId];
+	if(!pPlayer)
+		return;
+
+    CCharacter *pChr = pPlayer->GetCharacter();
+    if(!pChr)
+        return;
+
+    pChr->SetBlock(true);
+    pChr->SetPosition(vec2(8.2f * 32.0f, 153.4f * 32.0f));
 }
 
 void CGameContext::ConEffect(IConsole::IResult *pResult, void *pUserData) {

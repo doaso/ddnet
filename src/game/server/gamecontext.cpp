@@ -4015,6 +4015,8 @@ void CGameContext::RegisterChatCommands()
                 "\nПримеры:\n/reshka \"TUX\" 1000");
         Console()->Register("yes", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConYes, this, "Принять предложение");
         Console()->Register("no", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConNo, this, "Принять предложение");
+        Console()->Register("mlt", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConMLT, this, "Телепорт на мульту");
+        Console()->Register("clb", "", CFGFLAG_CHAT | CFGFLAG_SERVER, ConCLB, this, "Телепорт на клб");
 
 	Console()->Register("effect", "?r[игрок] ?i[ID эффекта]", CFGFLAG_CHAT | CFGFLAG_SERVER, ConEffect, this, "Установить себе/игроку эффект"
                 "\nПримеры:\n/effect 2\n/effect \"TUX\" 2"
