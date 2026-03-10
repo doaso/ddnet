@@ -1012,7 +1012,7 @@ void CGameContext::ConCLB(IConsole::IResult *pResult, void *pUserData)
         return;
 
     pChr->SetBlock(true);
-    pChr->SetPosition(vec2(56.3f * 32.0f, 116.3f * 32.0f));
+    pChr->SetPosition(vec2(47.5f * 32.0f, 94.0f * 32.0f));
 }
 
 void CGameContext::ConMLT(IConsole::IResult *pResult, void *pUserData)
